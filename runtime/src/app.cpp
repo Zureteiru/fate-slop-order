@@ -8,11 +8,25 @@
 
 namespace vnr::rt {
 
+// The game font from the user's folder when it is there and readable, else the OS font.
+App::FontChoice App::pick_font(Platform& p) {
+    if (p.user) {
+        std::vector<std::uint8_t> bytes;
+        if (p.user->read(kGameFontKey, bytes)) {
+            if (GlyphAtlas::usable(bytes, 0)) return {std::move(bytes), 0, true};
+            p.log.write(std::string(kGameFontKey) + " could not be opened; using the system font");
+        }
+    }
+    return {p.font, p.font_index, false};
+}
+
 App::App(Platform& platform, AppConfig config)
     : platform_(platform),
       config_(std::move(config)),
       cache_(platform_, textures_),
-      atlas_(textures_, platform_.font, platform_.font_index) {
+      font_(pick_font(platform_)),
+      atlas_(textures_, font_.bytes, font_.index) {
+    font_.bytes = {};
     scene_.region = config_.region;
     scene_.cache = &cache_;
     if (!atlas_.ok()) platform_.log.write("font could not be loaded: text will not be drawn");

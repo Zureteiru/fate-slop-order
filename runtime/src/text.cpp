@@ -44,6 +44,40 @@ GlyphAtlas::GlyphAtlas(TextureStore& textures, const std::vector<std::uint8_t>& 
 
 GlyphAtlas::~GlyphAtlas() = default;
 
+namespace {
+std::uint32_t be32(const std::vector<std::uint8_t>& b, std::size_t at) {
+    return (std::uint32_t{b[at]} << 24) | (std::uint32_t{b[at + 1]} << 16) | (std::uint32_t{b[at + 2]} << 8) | b[at + 3];
+}
+// stb_truetype trusts the file; check that the sfnt table directory (and every table it lists) lies
+// inside the buffer before handing user-supplied bytes to it.
+bool sfnt_in_bounds(const std::vector<std::uint8_t>& b, std::size_t base) {
+    if (base + 12 > b.size()) return false;
+    const std::size_t n = (std::size_t{b[base + 4]} << 8) | b[base + 5];
+    if (n == 0 || base + 12 + 16 * n > b.size()) return false;
+    for (std::size_t i = 0; i < n; ++i) {
+        const std::size_t rec = base + 12 + 16 * i;
+        const std::uint64_t off = be32(b, rec + 8), len = be32(b, rec + 12);
+        if (off + len > b.size()) return false;
+    }
+    return true;
+}
+bool font_in_bounds(const std::vector<std::uint8_t>& b, int index) {
+    if (b.size() >= 12 && b[0] == 't' && b[1] == 't' && b[2] == 'c' && b[3] == 'f') {
+        const std::uint32_t count = be32(b, 8);
+        if (index < 0 || static_cast<std::uint32_t>(index) >= count || 12 + 4 * std::size_t{count} > b.size()) return false;
+        return sfnt_in_bounds(b, be32(b, 12 + 4 * static_cast<std::size_t>(index)));
+    }
+    return index == 0 && sfnt_in_bounds(b, 0);
+}
+}  // namespace
+
+bool GlyphAtlas::usable(const std::vector<std::uint8_t>& font, int font_index) {
+    if (!font_in_bounds(font, font_index)) return false;
+    const int offset = stbtt_GetFontOffsetForIndex(font.data(), font_index);
+    stbtt_fontinfo info{};
+    return offset >= 0 && stbtt_InitFont(&info, font.data(), offset) && stbtt_FindGlyphIndex(&info, 'A') != 0;
+}
+
 const GlyphAtlas::Glyph& GlyphAtlas::glyph(char32_t cp) {
     const auto it = glyphs_.find(cp);
     if (it != glyphs_.end()) return it->second;

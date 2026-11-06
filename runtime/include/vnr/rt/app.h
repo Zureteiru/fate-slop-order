@@ -29,6 +29,9 @@ struct InputEvent {
     std::size_t index = 0;
 };
 
+// The game's dialogue font (FOT-Skip Std B), if the user put it in their folder. Never committed.
+inline constexpr const char* kGameFontKey = "fonts/FOT-SkipStd-B.otf";
+
 struct AppConfig {
     Region region = Region::NA;
     std::vector<std::string> script_ids;  // one reader "part": scripts played back to back
@@ -51,12 +54,20 @@ public:
     const Player* player() const { return player_.get(); }
     std::size_t script_index() const { return script_index_; }
     const UiLayout& ui() const { return ui_; }
+    bool game_font() const { return font_.game; }
 
 private:
     Platform& platform_;
     AppConfig config_;
     TextureStore textures_;
     AssetCache cache_;
+    struct FontChoice {
+        std::vector<std::uint8_t> bytes;  // freed once the atlas has its own copy
+        int index = 0;
+        bool game = false;
+    };
+    static FontChoice pick_font(Platform& p);
+    FontChoice font_;  // must be declared before atlas_
     GlyphAtlas atlas_;
     UiLayout ui_;
     SceneAssets scene_;

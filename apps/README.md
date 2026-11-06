@@ -75,6 +75,16 @@ The script checks each sheet's SHA-256 (the piece rectangles in `runtime/include
 measured on those exact files) and copies them to `<user folder>/ui/`. Without them the app draws
 plain boxes in the same layout.
 
+The dialogue font is the game's too: FGO uses **FOT-Skip Std B** (Fontworks). It is commercial, so it
+is installed the same way and never committed:
+
+```bash
+bash tools/install_font.sh "path/to/FOT-Skip Std B.otf"
+```
+
+It goes to `<user folder>/fonts/FOT-SkipStd-B.otf`. Without it (or if the file can't be opened) the
+app uses the OS's Japanese font.
+
 The layout follows the game, not Fate Café: the text box is drawn at its native 984×151, centred in
 the 1024-wide safe area and flush with the bottom of the screen, with two lines of text (measured
 from NA gameplay video).
@@ -86,5 +96,4 @@ from NA gameplay video).
 - **Wipes:** wipe patterns are drawn as an even fade.
 - **Effects:** particle effects are not drawn.
 - **Controller choices:** a controller cannot move between choice buttons yet. Use the 1–9 keys or the mouse.
-- **Game font:** FGO uses FOT-Skip Std B (Fontworks), which isn't free; the OS's Japanese font stands in.
 - **Story buttons:** SKIP, AUTO, LOG and hide-message are on the sheets but not drawn yet.

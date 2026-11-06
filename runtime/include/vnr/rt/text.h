@@ -27,6 +27,7 @@ public:
     GlyphAtlas& operator=(const GlyphAtlas&) = delete;
 
     bool ok() const { return ok_; }
+    static bool usable(const std::vector<std::uint8_t>& font, int font_index);  // TTF/OTF (incl. CFF) stb can open
     const Glyph& glyph(char32_t cp);
     float raster_px() const { return raster_px_; }
     float ascent() const { return ascent_; }  // raster px above the baseline

@@ -287,3 +287,39 @@ TEST(app_without_sheets_uses_plain_boxes) {
         if (q.texture == 0 && near(q.pos[0], {app.ui().panel.x, app.ui().panel.y})) panel = true;
     CHECK(panel);
 }
+
+TEST(app_prefers_user_game_font_and_falls_back) {
+    {
+        Env env;
+        fakes::MemFiles user;
+        user.data[kGameFontKey] = fakes::bytes_of(kDir + "/MPLUS1p-Regular.ttf");  // stand-in for the game font
+        env.platform.user = &user;
+        env.platform.font.clear();  // no OS font: text must come from the user font
+        AppConfig cfg;
+        cfg.script_ids = {"0100000010", "0100000011"};
+        App app(env.platform, cfg);
+        CHECK(app.game_font());
+        REQUIRE(play_until(app, [&] { return app.script_index() == 1 && drive::at_say(*app.player(), 56); }));
+        std::size_t glyphs = 0;
+        for (const Quad& q : app.draw_list().quads)
+            if (q.texture == 1) ++glyphs;
+        CHECK(glyphs > 10);
+    }
+    {
+        Env env;
+        fakes::MemFiles user;
+        auto truncated = fakes::bytes_of(kDir + "/MPLUS1p-Regular.ttf");
+        truncated.resize(2000);  // tables point past the end: must be rejected without reading out of bounds
+        user.data[kGameFontKey] = truncated;
+        CHECK(!GlyphAtlas::usable({'O', 'T', 'T', 'O', 0, 0}, 0));
+        CHECK(!GlyphAtlas::usable(truncated, 0));
+        env.platform.user = &user;
+        AppConfig cfg;
+        cfg.script_ids = {"0100000011"};
+        App app(env.platform, cfg);
+        CHECK(!app.game_font());
+        bool logged = false;
+        for (const auto& l : env.log.lines) logged = logged || l.find("could not be opened") != std::string::npos;
+        CHECK(logged);
+    }
+}
