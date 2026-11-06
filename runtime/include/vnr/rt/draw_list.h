@@ -13,6 +13,15 @@ namespace vnr::rt {
 
 using TextureId = std::uint32_t;  // 0 = no texture (solid colour)
 
+// What the game actually shows of the 1344x626 stage: the top 576 rows (the bottom 50 are bleed for
+// backgrounds), at least the 1024-wide safe area and up to the full 1344 on wider screens. Measured
+// against NA gameplay video: a 16:9 screen shows exactly x 160-1184, y 0-576 (sprites and
+// backgrounds line up to the pixel; a centred band would put them 25 too high).
+constexpr float kViewTop = 0;
+constexpr float kViewHeight = 576;
+constexpr float kViewSafeLeft = 160;
+constexpr float kViewSafeWidth = 1024;
+
 struct Color {
     float r = 1, g = 1, b = 1, a = 1;
 };

@@ -29,18 +29,21 @@ struct SceneAssets {
     double clock = 0;  // seconds since start, for UI animation (the "next" marker)
 };
 
-// Layout of the story UI (stage units), shared with input hit-testing. Matches the game: the text
-// box is drawn at its native size, centred in the 1024-wide safe area and flush with the bottom of
-// the screen (measured from NA gameplay video), two lines of text.
+// Layout of the story UI (stage units), shared with input hit-testing. Every number is measured
+// from 1080p NA gameplay video (game view = stage x 160-1184, y 0-576, see kView* in draw_list.h).
+// The game draws the sheet pieces at native width but squashed vertically (151 -> 139, 51 -> 45,
+// 82 -> 71); the name tab is drawn over the box's top-left corner.
 struct UiLayout {
-    Rect panel{180, 475, 984, 151};
-    Rect text{231, 499, 800, 110};
-    Rect name_plate{180, 427, 430, 50};  // width is the minimum; longer names stretch the tab
-    float name_text_x = 32, name_baseline = 35;  // inside the tab
-    float text_px = 34, line_height = 53, name_px = 28;
+    Rect panel{179.5f, 425, 984, 139};          // ends 12 above the bottom of the view
+    Rect text{232, 463.6f, 790, 100};           // first baseline = text.y + text_px (492.3)
+    Rect name_plate{165.5f, 393.4f, 283, 45};   // width is the minimum; longer names stretch the tab
+    float name_text_x = 24.5f, name_baseline = 36.2f;  // inside the tab
+    float text_px = 28.7f, line_height = 48, name_px = 29;  // FOT-Skip Std B em sizes (text widths match the video)
     int visible_lines = 2;
-    float choice_width = 752, choice_height = 82, choice_gap = 20, choice_px = 30;
-    Rect next_marker{1094, 551, 32, 64};  // bottom right of the box, shown while waiting for a tap
+    float choice_width = 777.5f, choice_height = 71, choice_gap = 30.4f, choice_px = 28.5f;
+    float choice_baseline = 49.2f;              // from the frame's top
+    float choices_centre_y = 217.1f;            // centre of the choice stack while the text box shows
+    Rect next_marker{1100, 497, 28, 56};        // bottom right of the box, shown while waiting for a tap
     float box_opacity = 0.88f;
 };
 

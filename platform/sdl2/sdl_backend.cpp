@@ -50,11 +50,12 @@ void Renderer::sync(rt::TextureStore& store) {
 void Renderer::layout() {
     int w = 0, h = 0;
     SDL_GetRendererOutputSize(r_, &w, &h);
-    scale_ = static_cast<float>(h) / static_cast<float>(kStageHeight);
-    // Fit by height like the game; if the window is narrower than the safe area, fit the safe area.
-    if (static_cast<float>(w) < kSafeWidth * scale_) scale_ = static_cast<float>(w) / kSafeWidth;
+    // Fit the game's visible band (576 tall) to the window height; if the window is narrower than
+    // the safe area, fit the safe area instead. Wider windows show more of the stage sideways.
+    scale_ = static_cast<float>(h) / rt::kViewHeight;
+    if (static_cast<float>(w) < rt::kViewSafeWidth * scale_) scale_ = static_cast<float>(w) / rt::kViewSafeWidth;
     offset_x_ = (static_cast<float>(w) - kStageWidth * scale_) / 2;
-    offset_y_ = (static_cast<float>(h) - kStageHeight * scale_) / 2;
+    offset_y_ = (static_cast<float>(h) - rt::kViewHeight * scale_) / 2 - rt::kViewTop * scale_;
 }
 
 Vec2 Renderer::to_stage(float x, float y) const {
@@ -66,8 +67,8 @@ void Renderer::draw(const rt::DrawList& list) {
     SDL_SetRenderDrawColor(r_, static_cast<Uint8>(list.clear.r * 255), static_cast<Uint8>(list.clear.g * 255),
                            static_cast<Uint8>(list.clear.b * 255), 255);
     SDL_RenderClear(r_);
-    SDL_Rect clip{static_cast<int>(offset_x_), static_cast<int>(offset_y_), static_cast<int>(kStageWidth * scale_ + 0.5f),
-                  static_cast<int>(kStageHeight * scale_ + 0.5f)};
+    SDL_Rect clip{static_cast<int>(offset_x_), static_cast<int>(offset_y_ + rt::kViewTop * scale_ + 0.5f),
+                  static_cast<int>(kStageWidth * scale_ + 0.5f), static_cast<int>(rt::kViewHeight * scale_ + 0.5f)};
     SDL_RenderSetClipRect(r_, &clip);
 
     auto flush = [&](SDL_Texture* tex) {

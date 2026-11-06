@@ -19,7 +19,7 @@ public:
     Renderer& operator=(const Renderer&) = delete;
 
     void sync(rt::TextureStore& store);  // upload new/changed textures, free released ones
-    void draw(const rt::DrawList& list);  // scales the 1344x626 stage to the output height, centred
+    void draw(const rt::DrawList& list);  // fits the game's visible band (rt::kView*) to the output, centred
     Vec2 to_stage(float window_x, float window_y) const;  // for pointer input
 
 private:

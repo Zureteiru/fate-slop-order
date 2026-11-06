@@ -142,7 +142,7 @@ std::vector<Rect> choice_rects(const ChoiceOp& choice, const UiLayout& ui, bool 
     std::vector<Rect> rects;
     const float n = static_cast<float>(choice.options.size());
     const float total = n * ui.choice_height + (n - 1) * ui.choice_gap;
-    const float centre_y = text_box_visible ? kH / 2 - 78 : kH / 2;
+    const float centre_y = text_box_visible ? ui.choices_centre_y : kViewTop + kViewHeight / 2;
     float y = centre_y - total / 2;
     for (std::size_t i = 0; i < choice.options.size(); ++i) {
         rects.push_back({(kW - ui.choice_width) / 2, y, ui.choice_width, ui.choice_height});
@@ -234,7 +234,7 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
             const RichText& label = c->options[i].text;
             const float w = std::min(text_width(atlas, label, ui.choice_px), r.w - 60);
             TextStyleBox lb;
-            const float baseline = r.y + r.h / 2 + ui.choice_px * 0.36f;
+            const float baseline = r.y + ui.choice_baseline;
             lb.box = {r.x + (r.w - w) / 2, baseline - ui.choice_px, r.w - 60, r.h};
             lb.px = ui.choice_px;
             lb.max_lines = 1;

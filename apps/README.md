@@ -47,6 +47,7 @@ The default is Fuyuki part 1 (NA). Other options:
 ```bash
 vnreader.exe --region JP --scripts 0100000010,0100000011
 vnreader.exe --smoke 14 --screenshot shot.bmp   # hidden window: tap 14 lines, save a frame, exit
+vnreader.exe --smoke 0 --until "after effect" --screenshot shot.bmp   # stop on the line containing that text
 ```
 
 **Controls:**
@@ -85,9 +86,15 @@ bash tools/install_font.sh "path/to/FOT-Skip Std B.otf"
 It goes to `<user folder>/fonts/FOT-SkipStd-B.otf`. Without it (or if the file can't be opened) the
 app uses the OS's Japanese font.
 
-The layout follows the game, not Fate Café: the text box is drawn at its native 984×151, centred in
-the 1024-wide safe area and flush with the bottom of the screen, with two lines of text (measured
-from NA gameplay video).
+The layout follows the game, not Fate Café, and was matched against 1080p NA gameplay video to
+within 1–2 px (`--smoke 0 --until "text"` captures the frame for a given line):
+
+- **View:** the game shows the top 576 rows of the 1344×626 stage (the rest is background bleed), at
+  least the 1024-wide safe area. The window opens at 1024×576; wider windows show more at the sides.
+- **Text box:** 984×139 (the sheet piece squashed vertically), 12 px above the bottom of the view.
+- **Name tab:** 283×45, drawn over the box's top-left corner, its point sticking out to the left.
+- **Text:** FOT-Skip Std B at 28.7 px (names 29 px, choices 28.5 px), two lines 48 apart.
+- **Choices:** 777×71 frames, 30 px apart, the dialogue stays visible underneath.
 
 ## Not in the skeleton yet
 

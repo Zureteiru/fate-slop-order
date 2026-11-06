@@ -3,6 +3,7 @@
 //
 //   vnreader [--region NA|JP] [--scripts 0100000010,0100000011]
 //            [--smoke N --screenshot out.bmp]   (hidden window: tap N lines, save a frame, exit)
+//            [--until "text"]   (smoke: keep tapping until a line containing "text" is waiting)
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -83,12 +84,15 @@ int main(int argc, char** argv) {
     cfg.script_ids = {"0100000010", "0100000011"};  // Fuyuki part 1
     int smoke = -1;
     const char* screenshot = nullptr;
+    std::string until;
+    bool matched = false;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--region" && i + 1 < argc) cfg.region = std::strcmp(argv[++i], "JP") == 0 ? Region::JP : Region::NA;
         else if (a == "--scripts" && i + 1 < argc) cfg.script_ids = split(argv[++i], ',');
         else if (a == "--smoke" && i + 1 < argc) smoke = std::atoi(argv[++i]);
         else if (a == "--screenshot" && i + 1 < argc) screenshot = argv[++i];
+        else if (a == "--until" && i + 1 < argc) until = argv[++i];
     }
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
@@ -97,7 +101,7 @@ int main(int argc, char** argv) {
     }
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     const Uint32 win_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (smoke >= 0 ? SDL_WINDOW_HIDDEN : 0);
-    SDL_Window* window = SDL_CreateWindow("vnreader", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1344, 626, win_flags);
+    SDL_Window* window = SDL_CreateWindow("vnreader", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 576, win_flags);  // 16:9, as the game
     const Uint32 r_flags = smoke >= 0 ? SDL_RENDERER_SOFTWARE : (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     SDL_Renderer* sdl_renderer = window ? SDL_CreateRenderer(window, -1, r_flags) : nullptr;
     if (!sdl_renderer) {
@@ -136,6 +140,14 @@ int main(int argc, char** argv) {
                 // Smoke test: tap through `smoke` dialogue lines (first choice), then capture one frame.
                 const Player& p = *app.player();
                 smoke_clock += dt;
+                // With --until, taps only start counting once that line is showing: --smoke 0 stops on
+                // it, --smoke 1 one tap later (e.g. on the choice that follows it).
+                if (!until.empty() && !matched) {
+                    const TextView tv = p.text();
+                    matched = tv.say && tv.say->text.plain().find(until) != std::string::npos;
+                    if (!matched) taps = -1000000;
+                    else taps = 0;
+                }
                 if (taps < smoke && smoke_clock > 0.05) {
                     smoke_clock = 0;
                     if (p.pending_choice()) input.push_back({rt::InputEvent::Kind::Choose, {}, 0});

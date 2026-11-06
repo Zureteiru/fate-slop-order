@@ -228,15 +228,17 @@ TEST(app_skin_draws_text_box_name_tab_and_next_marker) {
     App app(env.platform, cfg);
     REQUIRE(play_until(app, [&] { return app.script_index() == 1 && drive::at_say(*app.player(), 56); }));
     const UiLayout& ui = app.ui();
-    // text box: the sheet piece at native size, flush with the bottom of the stage
+    // text box: the sheet piece at native width, 12 above the bottom of the game's view (video)
     const Quad* box = find_src(app.draw_list(), skin::kTextBox);
     REQUIRE(box);
-    CHECK(near(box->pos[0], {ui.panel.x, ui.panel.y}));
-    CHECK(near(box->pos[2], {ui.panel.x + 984, 626}));
+    CHECK(near(box->pos[0], {179.5f, 425}));
+    CHECK(near(box->pos[2], {179.5f + 984, kViewTop + kViewHeight - 12}));
     // name tab ("???"): pointed end kept, stretched to the minimum width
     const Quad* tip = find_src(app.draw_list(), {skin::kNameTab.x, skin::kNameTab.y, skin::kNameTabLeft, skin::kNameTab.h});
     REQUIRE(tip);
     CHECK(near(tip->pos[0], {ui.name_plate.x, ui.name_plate.y}));
+    CHECK(tip > box);                        // the tab is drawn over the box's top-left corner
+    CHECK(tip->pos[0].x < box->pos[0].x);    // its point sticks out left of the box
     const Quad* fade = find_src(app.draw_list(), {skin::kNameTab.x + skin::kNameTab.w - skin::kNameTabRight, skin::kNameTab.y,
                                                   skin::kNameTabRight, skin::kNameTab.h});
     REQUIRE(fade);
