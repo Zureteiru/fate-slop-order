@@ -29,6 +29,9 @@ public:
     AssetState state(const std::string& url, const std::string& range = {}) const;
     const std::vector<std::uint8_t>* bytes(const std::string& url, const std::string& range = {}) const;
     const TextureAsset* texture(const std::string& url) const;
+    // Moves the downloaded bytes out (e.g. into an audio clip) and forgets the entry, so memory is not
+    // held twice; a later request reads the disk cache again. Empty unless the bytes are Ready.
+    std::vector<std::uint8_t> take_bytes(const std::string& url, const std::string& range = {});
 
     void poll();                      // collect finished downloads
     std::size_t pending() const { return inflight_.size(); }

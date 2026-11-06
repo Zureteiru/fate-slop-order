@@ -209,6 +209,12 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
                 case SDLK_l: out.push_back({InputEvent::Kind::OpenLog, {}, 0}); break;
                 case SDLK_s: out.push_back({InputEvent::Kind::SkipScript, {}, 0}); break;
                 case SDLK_ESCAPE: out.push_back({InputEvent::Kind::Cancel, {}, 0}); break;
+                case SDLK_MINUS:
+                case SDLK_KP_MINUS: out.push_back({InputEvent::Kind::VolumeDown, {}, 0}); break;
+                case SDLK_EQUALS:
+                case SDLK_PLUS:
+                case SDLK_KP_PLUS: out.push_back({InputEvent::Kind::VolumeUp, {}, 0}); break;
+                case SDLK_m: out.push_back({InputEvent::Kind::Mute, {}, 0}); break;
                 default:
                     if (e.key.keysym.sym >= SDLK_1 && e.key.keysym.sym <= SDLK_9)
                         out.push_back({InputEvent::Kind::Choose, {}, static_cast<std::size_t>(e.key.keysym.sym - SDLK_1)});
@@ -233,6 +239,33 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
             break;
     }
     return true;
+}
+
+AudioDevice::AudioDevice(rt::AudioDirector& audio) : audio_(audio) {
+    SDL_AudioSpec want{}, have{};
+    want.freq = 48000;  // Switch native; SDL converts on devices that want something else
+    want.format = AUDIO_F32SYS;
+    want.channels = 2;
+    want.samples = 1024;
+    want.callback = &AudioDevice::callback;
+    want.userdata = this;
+    dev_ = SDL_OpenAudioDevice(nullptr, 0, &want, &have, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
+    if (dev_ == 0) return;
+    rate_ = have.freq;
+    audio_.set_output_rate(rate_);
+    SDL_PauseAudioDevice(dev_, 0);
+}
+
+AudioDevice::~AudioDevice() {
+    if (dev_ == 0) return;
+    audio_.stop_all(0.05);  // no click on quit
+    SDL_Delay(80);
+    SDL_CloseAudioDevice(dev_);  // waits for the callback to return
+}
+
+void SDLCALL AudioDevice::callback(void* user, Uint8* stream, int len) {
+    auto* self = static_cast<AudioDevice*>(user);
+    self->audio_.render(reinterpret_cast<float*>(stream), static_cast<std::size_t>(len) / (2 * sizeof(float)));
 }
 
 }  // namespace vnr::sdl

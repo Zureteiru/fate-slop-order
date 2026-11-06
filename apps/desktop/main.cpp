@@ -5,10 +5,12 @@
 //            [--smoke N --screenshot out.bmp]   (hidden window: tap N lines, save a frame, exit)
 //            [--until "text"]   (smoke: keep tapping until a line containing "text" is waiting)
 //            [--log] [--auto]   (smoke: open the LOG screen / turn AUTO on before the capture)
+//            [--no-audio]       (no sound device; the mixer still runs, so voice waits keep their timing)
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -87,7 +89,7 @@ int main(int argc, char** argv) {
     const char* screenshot = nullptr;
     std::string until;
     bool matched = false;
-    bool open_log = false, auto_on = false;
+    bool open_log = false, auto_on = false, no_audio = false;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--region" && i + 1 < argc) cfg.region = std::strcmp(argv[++i], "JP") == 0 ? Region::JP : Region::NA;
@@ -97,6 +99,7 @@ int main(int argc, char** argv) {
         else if (a == "--until" && i + 1 < argc) until = argv[++i];
         else if (a == "--log") open_log = true;
         else if (a == "--auto") auto_on = true;
+        else if (a == "--no-audio") no_audio = true;
     }
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
@@ -125,6 +128,16 @@ int main(int argc, char** argv) {
     {
         rt::App app(platform, cfg);
         sdl::Renderer renderer(sdl_renderer);
+        // Declared after the App, so it closes first (before the App and its mixer go away).
+        std::unique_ptr<sdl::AudioDevice> audio;
+        if (!no_audio && SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
+            audio = std::make_unique<sdl::AudioDevice>(app.audio());
+            if (audio->ok()) log.write("audio: " + std::string(SDL_GetCurrentAudioDriver()) + " at " + std::to_string(audio->rate()) + " Hz");
+            else log.write(std::string("audio: no device (") + SDL_GetError() + "); running silent");
+        }
+        const bool silent = !audio || !audio->ok();
+        std::vector<float> null_sink;
+        double null_frames = 0;
         Uint64 last = SDL_GetPerformanceCounter();
         int taps = 0;
         double smoke_clock = 0;
@@ -170,6 +183,13 @@ int main(int argc, char** argv) {
             if (smoke >= 0 && app.phase() == rt::App::Phase::Finished) running = false;
 
             app.update(dt, input);
+            if (silent) {  // no device: drain the mixer at real time so clips still end
+                null_frames += dt * 48000;  // the director's default rate
+                const auto n = static_cast<std::size_t>(null_frames);
+                null_frames -= static_cast<double>(n);
+                null_sink.resize(n * 2);
+                if (n) app.audio().render(null_sink.data(), n);
+            }
             renderer.sync(app.textures());
             renderer.draw(app.draw_list());
             if (!running && smoke >= 0) {

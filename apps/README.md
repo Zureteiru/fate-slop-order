@@ -5,8 +5,8 @@ All reading logic is shared and platform-free:
 | Layer | What it does | Rule |
 |---|---|---|
 | `core/` | script → Program → Player → stage, text, waits, audio events | pure C++17 |
-| `runtime/` | the app: downloads + disk cache, image decoding, fonts and text layout, scene → `DrawList`, input → actions | pure C++17 |
-| `platform/sdl2/` | draws a `DrawList`, uploads textures, maps mouse / touch / keys / gamepad to `InputEvent`s | SDL2 only |
+| `runtime/` | the app: downloads + disk cache, image and MP3 decoding, mixing, fonts and text layout, scene → `DrawList`, input → actions | pure C++17 |
+| `platform/sdl2/` | draws a `DrawList`, uploads textures, maps mouse / touch / keys / gamepad to `InputEvent`s, opens the audio device | SDL2 only |
 | `apps/<os>/` | the OS services in `runtime/include/vnr/rt/platform.h`, plus packaging | OS-specific code lives only here |
 
 A wrapper is small. It must:
@@ -22,6 +22,8 @@ A wrapper is small. It must:
    2. call `App::update(dt, input)`;
    3. call `Renderer::sync(app.textures())` and `Renderer::draw(app.draw_list())`;
    4. present.
+4. **Open the audio device** (`sdl::AudioDevice`) after the `App` and close it before; its callback only calls
+   `App::audio().render()`.
 
 ## Status
 
@@ -49,6 +51,7 @@ vnreader.exe --region JP --scripts 0100000010,0100000011
 vnreader.exe --smoke 14 --screenshot shot.bmp   # hidden window: tap 14 lines, save a frame, exit
 vnreader.exe --smoke 0 --until "after effect" --screenshot shot.bmp   # stop on the line containing that text
 vnreader.exe --smoke 40 --log --screenshot log.bmp   # --log opens the LOG screen, --auto turns AUTO on, before the capture
+vnreader.exe --no-audio   # no sound device (the mixer still runs in real time, so voice waits keep their timing)
 ```
 
 **Controls:**
@@ -63,7 +66,31 @@ vnreader.exe --smoke 40 --log --screenshot log.bmp   # --log opens the LOG scree
 | in the log: wheel, drag, ↑ ↓ PgUp PgDn, d-pad, sticks | scroll |
 | in the log: click, Esc, right click / B, Space / A | close the log |
 | `S` | skip to the next script |
+| `-` / `=` | master volume down / up (10% steps) |
+| `M` | mute / unmute |
 | Esc | quit (when the log is closed) |
+
+## Audio
+
+BGM, sound effects and voices play through a software mixer in `runtime/` (`audio_mixer.h`, `audio.h`):
+
+- **Files:** the MP3s come from Atlas through the same download + disk cache as the images, with the fallback URL
+  when the first one fails. The whole part is prefetched in the background (4 at a time) once the images are in;
+  a cue whose file is not there yet starts when it arrives, except SEs more than 0.5 s late, which are skipped.
+  A file that can't be downloaded or decoded is logged and skipped; playback goes on.
+- **Decoding:** `dr_mp3` (vendored in `third_party/dr_libs`, unmodified, pure C), streamed from the compressed
+  bytes. No OS codecs, so it sounds the same on every target.
+- **Buses:** BGM (one track; a new one crossfades, the same one keeps playing), SE (several at once), voice
+  (a new line cuts the previous voice). Fades, per-sound volume, loops and stop-all follow the script.
+- **Voices:** when a voice ends (or can't load) the App calls `Player::voice_finished()`, which releases
+  `[wait voice]` and lets AUTO move on.
+- **Back:** the Player restores that line's BGM; SEs from the later line fade out and old SEs are not replayed.
+- **LOG screen:** the story pauses, the sound doesn't.
+- **Threads:** the device callback calls `AudioDirector::render()`, which locks the mixer; everything else runs on
+  the main loop.
+- **Volumes:** `-` / `=` / `M` while reading, or `settings.json` in the user folder (values 0–1):
+  `{"volume": {"master": 0.8, "bgm": 1, "se": 1, "voice": 1}}`.
+- **Movies** are not played yet: they are logged and count as finished at once.
 
 ## Game UI art
 
@@ -107,7 +134,8 @@ within 1–2 px (`--smoke 0 --until "text"` captures the frame for a given line)
 
 ## Not in the skeleton yet
 
-- **Audio:** the runtime receives the audio events but does not play them.
+- **Movies:** movie cues are skipped (logged).
+- **Voice replay from the LOG screen:** the backlog keeps each line's voice, but tapping it does nothing yet.
 - **Chapter picker:** the part is chosen on the command line instead.
 - **Wipes:** wipe patterns are drawn as an even fade.
 - **Effects:** particle effects are not drawn.

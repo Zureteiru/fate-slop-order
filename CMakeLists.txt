@@ -41,6 +41,10 @@ target_include_directories(vnr_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/core/incl
 # ---- runtime/: the shared app logic every platform wrapper drives (pure C++17)
 add_library(vnr_runtime STATIC
     runtime/src/app.cpp
+    runtime/src/audio.cpp
+    runtime/src/audio_mixer.cpp
+    runtime/src/mp3.cpp
+    runtime/src/dr_mp3_impl.cpp
     runtime/src/asset_cache.cpp
     runtime/src/draw_list.cpp
     runtime/src/image.cpp
@@ -53,12 +57,13 @@ add_library(vnr_runtime STATIC
 )
 target_include_directories(vnr_runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/runtime/include
                                        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb)
+target_include_directories(vnr_runtime SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/dr_libs)
 target_link_libraries(vnr_runtime PUBLIC vnr_core)
-# vendored stb: third-party code, compiled without project warnings
+# vendored stb / dr_mp3: third-party code, compiled without project warnings
 if(MSVC)
-    set_source_files_properties(runtime/src/stb_impl.cpp PROPERTIES COMPILE_OPTIONS "/W0")
+    set_source_files_properties(runtime/src/stb_impl.cpp runtime/src/dr_mp3_impl.cpp PROPERTIES COMPILE_OPTIONS "/W0")
 else()
-    set_source_files_properties(runtime/src/stb_impl.cpp PROPERTIES COMPILE_OPTIONS "-w")
+    set_source_files_properties(runtime/src/stb_impl.cpp runtime/src/dr_mp3_impl.cpp PROPERTIES COMPILE_OPTIONS "-w")
 endif()
 
 if(VNR_TARGET STREQUAL "host")
@@ -110,7 +115,7 @@ if(VNR_TARGET STREQUAL "host")
     target_compile_definitions(core_tests PRIVATE VNR_FIXTURE_DIR="${FIXTURES}")
     add_test(NAME core_tests COMMAND core_tests)
 
-    add_executable(runtime_tests tests/core_main.cpp tests/runtime_tests.cpp)
+    add_executable(runtime_tests tests/core_main.cpp tests/runtime_tests.cpp tests/audio_tests.cpp)
     target_include_directories(runtime_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
     target_link_libraries(runtime_tests PRIVATE vnr_runtime)
     target_compile_definitions(runtime_tests PRIVATE VNR_FIXTURE_DIR="${FIXTURES}")

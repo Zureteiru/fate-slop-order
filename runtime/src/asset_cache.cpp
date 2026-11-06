@@ -84,6 +84,14 @@ const std::vector<std::uint8_t>* AssetCache::bytes(const std::string& url, const
                                                                                                  : &it->second.bytes;
 }
 
+std::vector<std::uint8_t> AssetCache::take_bytes(const std::string& url, const std::string& range) {
+    const auto it = entries_.find(cache_key(url, range));
+    if (it == entries_.end() || it->second.state != AssetState::Ready || it->second.texture) return {};
+    std::vector<std::uint8_t> out = std::move(it->second.bytes);
+    entries_.erase(it);
+    return out;
+}
+
 const TextureAsset* AssetCache::texture(const std::string& url) const {
     const auto it = entries_.find(cache_key(url, {}));
     return (it == entries_.end() || it->second.state != AssetState::Ready || !it->second.texture) ? nullptr

@@ -8,6 +8,7 @@
 
 #include "vnr/player.h"
 #include "vnr/rt/asset_cache.h"
+#include "vnr/rt/audio.h"
 #include "vnr/rt/backlog.h"
 #include "vnr/rt/draw_list.h"
 #include "vnr/rt/platform.h"
@@ -29,6 +30,9 @@ struct InputEvent {
         OpenLog,      // `L` key / X button
         Cancel,       // Esc: closes the log, otherwise asks to quit
         SkipScript,
+        VolumeDown,   // `-` key: master volume -10%
+        VolumeUp,     // `=` key: master volume +10%
+        Mute,         // `M` key
     };
     Kind kind = Kind::Advance;
     Vec2 pos;
@@ -37,6 +41,8 @@ struct InputEvent {
 
 // The game's dialogue font (FOT-Skip Std B), if the user put it in their folder. Never committed.
 inline constexpr const char* kGameFontKey = "fonts/FOT-SkipStd-B.otf";
+// Optional user settings (volumes for now), in the user folder.
+inline constexpr const char* kSettingsKey = "settings.json";
 
 struct AppConfig {
     Region region = Region::NA;
@@ -64,12 +70,15 @@ public:
     const Backlog& backlog() const { return log_; }
     bool quit_requested() const { return quit_; }
     bool auto_mode() const { return scene_.auto_mode; }  // as of the last frame drawn
+    // Sound: the platform's audio callback calls audio().render() (thread-safe).
+    AudioDirector& audio() { return audio_; }
 
 private:
     Platform& platform_;
     AppConfig config_;
     TextureStore textures_;
     AssetCache cache_;
+    AudioDirector audio_;
     struct FontChoice {
         std::vector<std::uint8_t> bytes;  // freed once the atlas has its own copy
         int index = 0;
@@ -99,6 +108,8 @@ private:
     void start_script(std::size_t index);
     void handle(const InputEvent& e);
     void handle_log(const InputEvent& e);
+    void handle_volume(const InputEvent& e);
+    void play_audio_events();
     void render();
 };
 

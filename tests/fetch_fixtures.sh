@@ -23,6 +23,8 @@ FIXTURES=(
   "back10310.png|$A/Back/back10310.png|2155333926e66dc2bb1ed7c59a9bf5a9caa4ed8f832e950efe180ba73e19faeb"
   "back10200.png|$A/Back/back10200.png|32e68ec9e493f8a154fab77df0dac388711d4fd5b68603a1a5fe7e1acf51ea0a"
   "svt_98001000_98004000.json|https://api.atlasacademy.io/raw/NA/svtScript?charaId=98001000&charaId=98004000|8a534012c19ebffd4f3c0ebf9fce96f53f7a637dc79a7523bd602b4c8f491069"
+  # audio: one short game SE for the MP3 decoder tests (whole and truncated)
+  "bac8.mp3|$A/Audio/Battle/bac8.mp3|5c383cc5992e94a30b7794327613d8f2a32576991d52cb387e9870be9a9faac4"
   # OFL font for headless text layout tests (the apps use the OS font instead)
   "MPLUS1p-Regular.ttf|https://github.com/google/fonts/raw/main/ofl/mplus1p/MPLUS1p-Regular.ttf|2f294ad496432b1608f070d310e3aa2adcf1de4af429f4901df97ec4bd361ed1"
 )

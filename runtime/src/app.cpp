@@ -1,6 +1,7 @@
 #include "vnr/rt/app.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <set>
 
@@ -24,6 +25,7 @@ App::App(Platform& platform, AppConfig config)
     : platform_(platform),
       config_(std::move(config)),
       cache_(platform_, textures_),
+      audio_(cache_, platform_.log, config_.region),
       font_(pick_font(platform_)),
       atlas_(textures_, font_.bytes, font_.index) {
     font_.bytes = {};
@@ -33,6 +35,10 @@ App::App(Platform& platform, AppConfig config)
     if (platform_.user) scene_.skin = load_ui_skin(*platform_.user, textures_, platform_.log);
     if (!scene_.skin.has_talk()) platform_.log.write("no UI sheets (ui/003.png, ui/030.png): using plain boxes");
     for (const auto& id : config_.script_ids) cache_.request_bytes(script_url(id, config_.region));
+    if (platform_.user) {
+        std::vector<std::uint8_t> settings;
+        if (platform_.user->read(kSettingsKey, settings)) audio_.set_volumes(parse_audio_settings(settings));
+    }
 }
 
 App::~App() = default;
@@ -143,6 +149,7 @@ void App::finish_assets() {
             }
         }
     }
+    for (const Program& p : programs_) audio_.prefetch(p);  // in the background, in script order
     start_script(0);
 }
 
@@ -152,6 +159,7 @@ void App::start_script(std::size_t index) {
         phase_ = Phase::Finished;
         player_.reset();
         log_.close();
+        audio_.stop_all(1.0);
         return;
     }
     const bool carry = player_ != nullptr;  // AUTO keeps its state across the scripts of a part
@@ -188,7 +196,7 @@ void App::handle(const InputEvent& e) {
             player_->advance();
             break;
         case InputEvent::Kind::Back:
-            player_->back();
+            if (player_->back()) audio_.on_back();  // the BGM of that line follows from the Player
             break;
         case InputEvent::Kind::Choose:
             player_->choose(e.index);
@@ -233,13 +241,48 @@ void App::handle(const InputEvent& e) {
         case InputEvent::Kind::PointerMove:
         case InputEvent::Kind::PointerUp:
         case InputEvent::Kind::Scroll:
+        case InputEvent::Kind::VolumeDown:
+        case InputEvent::Kind::VolumeUp:
+        case InputEvent::Kind::Mute:
             break;
+    }
+}
+
+void App::handle_volume(const InputEvent& e) {
+    AudioVolumes v = audio_.volumes();
+    if (e.kind == InputEvent::Kind::Mute) v.muted = !v.muted;
+    else v.master = std::clamp(std::round((v.master + (e.kind == InputEvent::Kind::VolumeUp ? 0.1f : -0.1f)) * 10) / 10, 0.f, 1.f);
+    audio_.set_volumes(v);
+    platform_.log.write(v.muted ? std::string("audio: muted")
+                                : "audio: master volume " + std::to_string(static_cast<int>(std::lround(v.master * 100))) + "%");
+}
+
+// Hands the Player's audio events to the director. Movies are not played yet: they count as
+// finished at once (which may run the script on and queue more events).
+void App::play_audio_events() {
+    for (int round = 0; round < 8 && player_; ++round) {
+        bool movie = false;
+        for (const AudioEvent& ev : player_->drain_audio()) {
+            if (ev.kind == AudioEvent::Kind::Movie) {
+                platform_.log.write("movie " + ev.name + ": not supported yet, skipped");
+                movie = true;
+            } else {
+                audio_.handle(ev);
+            }
+        }
+        if (!movie) return;
+        player_->movie_finished();
     }
 }
 
 void App::update(double dt, const std::vector<InputEvent>& input) {
     scene_.clock += dt;
     cache_.poll();
+    for (const InputEvent& e : input)
+        if (e.kind == InputEvent::Kind::VolumeDown || e.kind == InputEvent::Kind::VolumeUp || e.kind == InputEvent::Kind::Mute)
+            handle_volume(e);
+    audio_.update(dt);
+    if (player_ && audio_.take_voice_finished()) player_->voice_finished();
     if (phase_ != Phase::Playing)
         for (const InputEvent& e : input)
             if (e.kind == InputEvent::Kind::Cancel) quit_ = true;
@@ -252,8 +295,8 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
             break;
         case Phase::Playing:
             for (const InputEvent& e : input) handle(e);
-            if (!log_.is_open()) player_->update(dt);  // the log pauses the story (and auto mode)
-            for (const AudioEvent& ev : player_->drain_audio()) (void)ev;  // audio: later step
+            if (!log_.is_open()) player_->update(dt);  // the log pauses the story (and auto mode), not the sound
+            play_audio_events();
             if (player_->status() == Status::Ended) start_script(script_index_ + 1);
             break;
         case Phase::Finished:
