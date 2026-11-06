@@ -35,7 +35,10 @@ struct SceneAssets {
 // 82 -> 71); the name tab is drawn over the box's top-left corner.
 struct UiLayout {
     Rect panel{179.5f, 425, 984, 139};          // ends 12 above the bottom of the view
-    Rect text{232, 463.6f, 790, 100};           // first baseline = text.y + text_px (492.3)
+    // Text wraps at the game's width: from the text's left edge to just short of the LOG / AUTO
+    // buttons (video: x 1093). Scripts break some lines themselves ([r]/[sr]); the rest the game
+    // wraps, so this width, not per-line fixes, decides how every chapter's text fits.
+    Rect text{232, 463.6f, 860, 100};           // first baseline = text.y + text_px (492.3)
     Rect name_plate{165.5f, 393.4f, 283, 45};   // width is the minimum; longer names stretch the tab
     float name_text_x = 24.5f, name_baseline = 36.2f;  // inside the tab
     float text_px = 28.7f, line_height = 48, name_px = 29;  // FOT-Skip Std B em sizes (text widths match the video)

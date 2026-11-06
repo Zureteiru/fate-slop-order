@@ -1,4 +1,6 @@
 // Runtime: JSON, images, asset cache, text layout, and golden draw lists from the App.
+#include <cstdio>
+
 #include "check.h"
 #include "drive.h"
 #include "fakes/fake_platform.h"
@@ -324,4 +326,29 @@ TEST(app_prefers_user_game_font_and_falls_back) {
         for (const auto& l : env.log.lines) logged = logged || l.find("could not be opened") != std::string::npos;
         CHECK(logged);
     }
+}
+
+TEST(text_wraps_at_the_game_width) {
+    // From the NA video: the script's second line fits on one line in the game's box (it wrapped
+    // early when the text area was narrower than the game's).
+    const std::string game = drive::read_file(kDir + "/../user/FOT-SkipStd-B.otf");  // local copy, never committed
+    const std::vector<std::uint8_t> font = game.empty() ? fakes::bytes_of(kDir + "/MPLUS1p-Regular.ttf")
+                                                        : std::vector<std::uint8_t>(game.begin(), game.end());
+    TextureStore tex;
+    GlyphAtlas atlas(tex, font, 0);
+    REQUIRE(atlas.ok());
+    const UiLayout ui;
+    TextStyleBox b;
+    b.box = ui.text;
+    b.px = ui.text_px;
+    b.line_height = ui.line_height;
+    b.max_lines = 99;
+    const RichText t = parse_rich_text(
+        "You were asleep, but I don't see why you'd sleep in the[sr]hall. Can you not sleep unless you're on a hard bed?", {});
+    DrawList out;
+    if (!game.empty()) CHECK_EQ(draw_text(atlas, t, t.glyph_count, b, out).total_lines, 2);
+    // and a long unbroken line still wraps rather than running past the box
+    const RichText long_line = parse_rich_text(
+        "But please don't be discouraged because you're a public applicant. We need all of you for this mission.", {});
+    CHECK_EQ(draw_text(atlas, long_line, long_line.glyph_count, b, out).total_lines, 2);
 }
