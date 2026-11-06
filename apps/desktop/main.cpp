@@ -110,7 +110,8 @@ int main(int argc, char** argv) {
     DiskFiles files(desktop::cache_dir());
     StderrLog log;
     int font_index = 0;
-    rt::Platform platform{*http, files, log, load_font(font_index), font_index};
+    DiskFiles user_files(desktop::user_dir());
+    rt::Platform platform{*http, files, log, load_font(font_index), font_index, &user_files};
     if (platform.font.empty()) log.write("no Japanese system font found; text will not be drawn");
 
     {
@@ -142,7 +143,7 @@ int main(int argc, char** argv) {
                         input.push_back({rt::InputEvent::Kind::Advance, {}, 0});
                         if (p.status() == Status::AwaitAdvance) ++taps;
                     }
-                } else if (taps >= smoke && p.status() == Status::AwaitAdvance) {
+                } else if (taps >= smoke && (p.status() == Status::AwaitAdvance || p.pending_choice())) {
                     running = false;
                 }
             }

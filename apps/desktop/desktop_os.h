@@ -11,6 +11,7 @@
 namespace vnr::desktop {
 
 std::string cache_dir();                         // created if missing
+std::string user_dir();                          // files the user supplies (ui/ sheets); created if missing
 std::vector<std::string> japanese_font_paths();  // tried in order
 std::unique_ptr<rt::Http> make_http(int worker_threads = 4);
 

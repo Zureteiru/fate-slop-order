@@ -2,8 +2,10 @@
 #include "check.h"
 #include "drive.h"
 #include "fakes/fake_platform.h"
+#include "png_writer.h"
 #include "vnr/rt/app.h"
 #include "vnr/rt/json.h"
+#include "vnr/rt/ui_skin.h"
 
 #ifndef VNR_FIXTURE_DIR
 #error "VNR_FIXTURE_DIR must point at .cache/scripts"
@@ -178,4 +180,110 @@ TEST(app_pointer_picks_choice) {
     app.update(0, {{InputEvent::Kind::Pointer, {rects[1].x + 10, rects[1].y + 10}, 0}});
     CHECK(app.player()->pending_choice() == nullptr);
     CHECK_EQ(app.player()->backlog().size(), static_cast<std::size_t>(2));
+}
+
+namespace {
+bool same(const Rect& a, const Rect& b) { return a.x == b.x && a.y == b.y && a.w == b.w && a.h == b.h; }
+const Quad* find_src(const DrawList& d, const Rect& src) {
+    for (const Quad& q : d.quads)
+        if (q.texture != 0 && same(q.src, src)) return &q;
+    return nullptr;
+}
+// Stand-ins for the user's UI sheets: right sizes, flat colour.
+void add_sheets(fakes::MemFiles& user) {
+    user.data["ui/003.png"] = testpng::solid(2048, 2048, 0x203060ffu);
+    user.data["ui/030.png"] = testpng::solid(256, 256, 0xffffffffu);
+}
+}  // namespace
+
+TEST(ui_skin_missing_or_wrong_size_falls_back) {
+    TextureStore textures;
+    fakes::MemLog log;
+    fakes::MemFiles none;
+    CHECK(!load_ui_skin(none, textures, log).has_talk());
+    CHECK(log.lines.empty());  // missing sheets are normal, not an error
+
+    fakes::MemFiles wrong;
+    wrong.data["ui/003.png"] = testpng::solid(64, 64, 0xffffffffu);
+    wrong.data["ui/030.png"] = {1, 2, 3};
+    const UiSkin s = load_ui_skin(wrong, textures, log);
+    CHECK(!s.has_talk());
+    CHECK(!s.has_next());
+    CHECK_EQ(log.lines.size(), static_cast<std::size_t>(2));
+
+    fakes::MemFiles good;
+    add_sheets(good);
+    const UiSkin ok = load_ui_skin(good, textures, log);
+    CHECK(ok.has_talk());
+    CHECK(ok.has_next());
+}
+
+TEST(app_skin_draws_text_box_name_tab_and_next_marker) {
+    Env env;
+    fakes::MemFiles user;
+    add_sheets(user);
+    env.platform.user = &user;
+    AppConfig cfg;
+    cfg.script_ids = {"0100000010", "0100000011"};
+    App app(env.platform, cfg);
+    REQUIRE(play_until(app, [&] { return app.script_index() == 1 && drive::at_say(*app.player(), 56); }));
+    const UiLayout& ui = app.ui();
+    // text box: the sheet piece at native size, flush with the bottom of the stage
+    const Quad* box = find_src(app.draw_list(), skin::kTextBox);
+    REQUIRE(box);
+    CHECK(near(box->pos[0], {ui.panel.x, ui.panel.y}));
+    CHECK(near(box->pos[2], {ui.panel.x + 984, 626}));
+    // name tab ("???"): pointed end kept, stretched to the minimum width
+    const Quad* tip = find_src(app.draw_list(), {skin::kNameTab.x, skin::kNameTab.y, skin::kNameTabLeft, skin::kNameTab.h});
+    REQUIRE(tip);
+    CHECK(near(tip->pos[0], {ui.name_plate.x, ui.name_plate.y}));
+    const Quad* fade = find_src(app.draw_list(), {skin::kNameTab.x + skin::kNameTab.w - skin::kNameTabRight, skin::kNameTab.y,
+                                                  skin::kNameTabRight, skin::kNameTab.h});
+    REQUIRE(fade);
+    CHECK(fade->pos[1].x >= ui.name_plate.x + ui.name_plate.w - 0.01f);
+    // waiting for a tap: one frame of the spinning "next" marker
+    for (int i = 0; i < 100 && app.player()->status() != Status::AwaitAdvance; ++i) app.update(0.1, {});
+    REQUIRE(app.player()->status() == Status::AwaitAdvance);
+    bool marker = false;
+    for (int f = 0; f < skin::kNextFrames; ++f) marker = marker || find_src(app.draw_list(), skin::next_frame(f)) != nullptr;
+    CHECK(marker);
+}
+
+TEST(app_skin_draws_choice_frames) {
+    Env env;
+    fakes::MemFiles user;
+    add_sheets(user);
+    env.platform.user = &user;
+    AppConfig cfg;
+    cfg.script_ids = {"0100000011"};
+    App app(env.platform, cfg);
+    REQUIRE(play_until(app, [&] { return app.player()->pending_choice() != nullptr; }));
+    const auto rects = choice_rects(*app.player()->pending_choice(), app.ui(), app.player()->text().visible);
+    REQUIRE(rects.size() == 2);
+    // each choice: three slices of the frame, corners unscaled, covering the hit rect exactly
+    const Rect left{skin::kChoice.x, skin::kChoice.y, skin::kChoiceEdge, skin::kChoice.h};
+    std::size_t lefts = 0;
+    for (const Quad& q : app.draw_list().quads)
+        if (q.texture != 0 && same(q.src, left)) {
+            ++lefts;
+            const Rect& r = rects[lefts - 1];
+            CHECK(near(q.pos[0], {r.x, r.y}));
+            CHECK(near(q.pos[3], {r.x, r.y + r.h}));
+        }
+    CHECK_EQ(lefts, static_cast<std::size_t>(2));
+    // no "next" marker while a choice is pending
+    for (int f = 0; f < skin::kNextFrames; ++f) CHECK(find_src(app.draw_list(), skin::next_frame(f)) == nullptr);
+}
+
+TEST(app_without_sheets_uses_plain_boxes) {
+    Env env;
+    AppConfig cfg;
+    cfg.script_ids = {"0100000010", "0100000011"};
+    App app(env.platform, cfg);
+    REQUIRE(play_until(app, [&] { return app.script_index() == 1 && drive::at_say(*app.player(), 56); }));
+    CHECK(find_src(app.draw_list(), skin::kTextBox) == nullptr);
+    bool panel = false;
+    for (const Quad& q : app.draw_list().quads)
+        if (q.texture == 0 && near(q.pos[0], {app.ui().panel.x, app.ui().panel.y})) panel = true;
+    CHECK(panel);
 }

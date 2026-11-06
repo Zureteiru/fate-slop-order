@@ -53,6 +53,9 @@ struct Platform {
     Log& log;
     std::vector<std::uint8_t> font;  // a Japanese-capable TTF/TTC from the OS
     int font_index = 0;              // face index inside a .ttc
+    // Files the user put on the device themselves (e.g. ui/003.png, the game's UI sheets). Never
+    // downloaded or committed; may be null. Keys use the same '/' form as `files`.
+    Files* user = nullptr;
 };
 
 }  // namespace vnr::rt

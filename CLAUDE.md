@@ -14,7 +14,7 @@ Rules:
   Windows, macOS, Android) lives only in apps/*/. Anything that differs
   per OS goes through runtime/include/vnr/rt/platform.h.
 - Never edit third_party/; changes go upstream in switch-vnpop.
-- Never commit Fate Café source; scratch/ is for downloads.
+- Never commit Fate Café source or game art (UI sheets, fonts); scratch/ is for downloads.
 - Work in plan mode first for anything touching core/.
 - A task is done only when the test script passes.
 

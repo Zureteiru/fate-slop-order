@@ -52,6 +52,8 @@ struct TextStyleBox {
     float line_height = 32.4f;
     int max_lines = 2;        // the box shows the last `max_lines` lines that contain revealed text
     Color ink{1, 1, 1, 1};
+    Color shadow{0, 0, 0, 0};  // drop shadow under each glyph; alpha 0 = none
+    Vec2 shadow_offset{2, 2};
 };
 
 struct TextLayoutResult {

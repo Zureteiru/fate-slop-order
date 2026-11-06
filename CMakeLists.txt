@@ -45,6 +45,7 @@ add_library(vnr_runtime STATIC
     runtime/src/json.cpp
     runtime/src/scene_render.cpp
     runtime/src/text.cpp
+    runtime/src/ui_skin.cpp
     runtime/src/stb_impl.cpp
 )
 target_include_directories(vnr_runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/runtime/include

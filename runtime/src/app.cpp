@@ -16,6 +16,8 @@ App::App(Platform& platform, AppConfig config)
     scene_.region = config_.region;
     scene_.cache = &cache_;
     if (!atlas_.ok()) platform_.log.write("font could not be loaded: text will not be drawn");
+    if (platform_.user) scene_.skin = load_ui_skin(*platform_.user, textures_, platform_.log);
+    if (!scene_.skin.has_talk()) platform_.log.write("no UI sheets (ui/003.png, ui/030.png): using plain boxes");
     for (const auto& id : config_.script_ids) cache_.request_bytes(script_url(id, config_.region));
 }
 
@@ -177,6 +179,7 @@ void App::handle(const InputEvent& e) {
 }
 
 void App::update(double dt, const std::vector<InputEvent>& input) {
+    scene_.clock += dt;
     cache_.poll();
     switch (phase_) {
         case Phase::LoadingScripts:

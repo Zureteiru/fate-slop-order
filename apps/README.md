@@ -14,7 +14,8 @@ A wrapper is small. It must:
 1. **Implement the platform services:**
    - `rt::Http`: async `get` (with optional `Range`) and `poll`;
    - `rt::Files`: read and write under a cache folder;
-   - `rt::Log`.
+   - `rt::Log`;
+   - optionally `Platform::user`, a second `rt::Files` over the folder the user puts the UI sheets in.
 2. **Load a Japanese system font** into `Platform::font`.
 3. **Run the loop:**
    1. read the SDL events with `sdl::translate_event`;
@@ -24,12 +25,12 @@ A wrapper is small. It must:
 
 ## Status
 
-| Target | Folder | HTTP | Cache folder | Font | Status |
-|---|---|---|---|---|---|
-| Windows | `apps/desktop` (`os_windows.cpp`) | WinHTTP | `%LOCALAPPDATA%\vnreader\cache` | Yu Gothic / Meiryo | **builds and runs** |
-| macOS | `apps/desktop` + `os_posix.cpp` | libcurl (ships with macOS) | `~/Library/Caches/vnreader` | Hiragino Sans | later step |
-| Switch | `apps/switch` | libcurl (devkitPro portlib) | `sdmc:/switch/vnreader/cache` | system shared font (`plGetSharedFont`) | later step; SDL2 and curl are in the `devkitpro/devkita64` image |
-| Android | `apps/android` (Gradle + SDLActivity) | Java `HttpURLConnection` over JNI | app files dir | `/system/fonts` Noto CJK | later step; needs Android Studio (JDK 17 + NDK) |
+| Target | Folder | HTTP | Cache folder | User folder (UI sheets) | Font | Status |
+|---|---|---|---|---|---|---|
+| Windows | `apps/desktop` (`os_windows.cpp`) | WinHTTP | `%LOCALAPPDATA%\vnreader\cache` | `%LOCALAPPDATA%\vnreader` | Yu Gothic / Meiryo | **builds and runs** |
+| macOS | `apps/desktop` + `os_posix.cpp` | libcurl (ships with macOS) | `~/Library/Caches/vnreader` | `~/Library/Application Support/vnreader` | Hiragino Sans | later step |
+| Switch | `apps/switch` | libcurl (devkitPro portlib) | `sdmc:/switch/vnreader/cache` | `sdmc:/switch/vnreader` | system shared font (`plGetSharedFont`) | later step; SDL2 and curl are in the `devkitpro/devkita64` image |
+| Android | `apps/android` (Gradle + SDLActivity) | Java `HttpURLConnection` over JNI | app files dir | app external files dir | `/system/fonts` Noto CJK | later step; needs Android Studio (JDK 17 + NDK) |
 
 ## Windows
 
@@ -59,6 +60,25 @@ vnreader.exe --smoke 14 --screenshot shot.bmp   # hidden window: tap 14 lines, s
 | `S` | skip to the next script |
 | Esc | quit |
 
+## Game UI art
+
+vnreader draws the story screen with the game's own pieces: the text box, the name tab, the choice
+frame and the spinning "next" marker. They come from two sheets of the Spriters Resource
+"Fate/Grand Order → Miscellaneous → User Interface" rip (`003.png`, `030.png`). The sheets are game art,
+so they are **never committed and never downloaded by the app**. Each user installs them once:
+
+```bash
+bash tools/install_ui_sheets.sh "path/to/Mobile - Fate_Grand Order - Miscellaneous - User Interface.zip"
+```
+
+The script checks each sheet's SHA-256 (the piece rectangles in `runtime/include/vnr/rt/ui_skin.h` were
+measured on those exact files) and copies them to `<user folder>/ui/`. Without them the app draws
+plain boxes in the same layout.
+
+The layout follows the game, not Fate Café: the text box is drawn at its native 984×151, centred in
+the 1024-wide safe area and flush with the bottom of the screen, with two lines of text (measured
+from NA gameplay video).
+
 ## Not in the skeleton yet
 
 - **Audio:** the runtime receives the audio events but does not play them.
@@ -66,3 +86,5 @@ vnreader.exe --smoke 14 --screenshot shot.bmp   # hidden window: tap 14 lines, s
 - **Wipes:** wipe patterns are drawn as an even fade.
 - **Effects:** particle effects are not drawn.
 - **Controller choices:** a controller cannot move between choice buttons yet. Use the 1–9 keys or the mouse.
+- **Game font:** FGO uses FOT-Skip Std B (Fontworks), which isn't free; the OS's Japanese font stands in.
+- **Story buttons:** SKIP, AUTO, LOG and hide-message are on the sheets but not drawn yet.

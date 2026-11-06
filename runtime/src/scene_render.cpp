@@ -121,6 +121,21 @@ Color to_color(Rgba c, float alpha_mul = 1) {
     return {c.r / 255.f, c.g / 255.f, c.b / 255.f, (c.a / 255.f) * alpha_mul};
 }
 
+// Draws `src` into `dst` keeping `left`/`right` source columns unscaled and stretching the middle
+// (the name tab's point and fade, the choice frame's cut corners).
+void draw_hslice(DrawList& out, TextureId tex, const Rect& src, const Rect& dst, float left, float right, Color c) {
+    if (dst.w <= left + right) {
+        out.image(tex, src, dst, c);
+        return;
+    }
+    out.image(tex, {src.x, src.y, left, src.h}, {dst.x, dst.y, left, dst.h}, c);
+    out.image(tex, {src.x + left, src.y, src.w - left - right, src.h}, {dst.x + left, dst.y, dst.w - left - right, dst.h}, c);
+    out.image(tex, {src.x + src.w - right, src.y, right, src.h}, {dst.x + dst.w - right, dst.y, right, dst.h}, c);
+}
+
+constexpr Color kInk{0.96f, 0.96f, 0.96f, 1};
+constexpr Color kShadow{0, 0, 0, 0.75f};
+
 }  // namespace
 
 std::vector<Rect> choice_rects(const ChoiceOp& choice, const UiLayout& ui, bool text_box_visible) {
@@ -162,22 +177,31 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
     }
 
     // text box
+    const UiSkin& skin = a.skin;
     const TextView tv = player.text();
     if (tv.visible && tv.say) {
-        Vec2 ms = st.message_shake.offset();
+        const Vec2 ms = st.message_shake.offset();
         Rect panel = ui.panel;
         panel.x += ms.x;
         panel.y += ms.y;
-        out.rect(panel, {0.03f, 0.09f, 0.25f, 0.82f});
+        if (skin.has_talk())
+            out.image(skin.talk, skin::kTextBox, panel, {1, 1, 1, ui.box_opacity});
+        else
+            out.rect(panel, {0.03f, 0.09f, 0.25f, ui.box_opacity});
         if (!tv.say->speaker.empty()) {
-            const float w = text_width(atlas, tv.say->speaker, ui.name_px) + 76;
-            out.rect({ui.name_plate.x + ms.x, ui.name_plate.y + ms.y, w, ui.name_plate.h}, {0.07f, 0.2f, 0.45f, 0.9f});
+            const float w = std::max(ui.name_plate.w, text_width(atlas, tv.say->speaker, ui.name_px) + ui.name_text_x + 80);
+            const Rect tab{ui.name_plate.x + ms.x, ui.name_plate.y + ms.y, w, ui.name_plate.h};
+            if (skin.has_talk())
+                draw_hslice(out, skin.talk, skin::kNameTab, tab, skin::kNameTabLeft, skin::kNameTabRight, {1, 1, 1, ui.box_opacity});
+            else
+                out.rect(tab, {0.07f, 0.2f, 0.45f, ui.box_opacity});
             TextStyleBox nb;
-            nb.box = {ui.name_plate.x + 28 + ms.x, ui.name_plate.y + 6 + ms.y, w, ui.name_plate.h};
+            nb.box = {tab.x + ui.name_text_x, tab.y + ui.name_baseline - ui.name_px, w, tab.h};
             nb.px = ui.name_px;
-            nb.line_height = ui.name_plate.h;
+            nb.line_height = tab.h;
             nb.max_lines = 1;
-            nb.ink = {0.93f, 0.93f, 0.93f, 1};
+            nb.ink = kInk;
+            nb.shadow = kShadow;
             draw_text(atlas, tv.say->speaker, tv.say->speaker.glyph_count, nb, out);
         }
         TextStyleBox tb;
@@ -185,23 +209,37 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
         tb.px = ui.text_px;
         tb.line_height = ui.line_height;
         tb.max_lines = ui.visible_lines;
+        tb.ink = kInk;
+        tb.shadow = kShadow;
         draw_text(atlas, tv.say->text, tv.shown, tb, out);
+        if (skin.has_next() && player.status() == Status::AwaitAdvance && !player.pending_choice()) {
+            const int frame = static_cast<int>(a.clock * skin::kNextFps) % skin::kNextFrames;
+            out.image(skin.next, skin::next_frame(frame),
+                      {ui.next_marker.x + ms.x, ui.next_marker.y + ms.y, ui.next_marker.w, ui.next_marker.h});
+        }
     }
 
     // choices
     if (const ChoiceOp* c = player.pending_choice()) {
         const auto rects = choice_rects(*c, ui, tv.visible);
         for (std::size_t i = 0; i < rects.size(); ++i) {
-            out.rect(rects[i], {0.02f, 0.07f, 0.16f, 0.92f});
-            out.rect({rects[i].x, rects[i].y, rects[i].w, 2}, {0.57f, 0.75f, 0.85f, 1});
-            out.rect({rects[i].x, rects[i].y + rects[i].h - 2, rects[i].w, 2}, {0.57f, 0.75f, 0.85f, 1});
+            const Rect& r = rects[i];
+            if (skin.has_talk()) {
+                draw_hslice(out, skin.talk, skin::kChoice, r, skin::kChoiceEdge, skin::kChoiceEdge, {1, 1, 1, ui.box_opacity});
+            } else {
+                out.rect(r, {0.02f, 0.02f, 0.04f, ui.box_opacity});
+                out.rect({r.x, r.y, r.w, 2}, {0.57f, 0.75f, 0.85f, 1});
+                out.rect({r.x, r.y + r.h - 2, r.w, 2}, {0.57f, 0.75f, 0.85f, 1});
+            }
             const RichText& label = c->options[i].text;
-            const float w = std::min(text_width(atlas, label, ui.text_px), rects[i].w - 40);
+            const float w = std::min(text_width(atlas, label, ui.choice_px), r.w - 60);
             TextStyleBox lb;
-            lb.box = {rects[i].x + (rects[i].w - w) / 2, rects[i].y + (rects[i].h - ui.text_px) / 2 - 4, rects[i].w - 40, rects[i].h};
-            lb.px = ui.text_px;
+            const float baseline = r.y + r.h / 2 + ui.choice_px * 0.36f;
+            lb.box = {r.x + (r.w - w) / 2, baseline - ui.choice_px, r.w - 60, r.h};
+            lb.px = ui.choice_px;
             lb.max_lines = 1;
-            lb.ink = {0.93f, 0.93f, 0.93f, 1};
+            lb.ink = kInk;
+            lb.shadow = kShadow;
             draw_text(atlas, label, label.glyph_count, lb, out);
         }
     }

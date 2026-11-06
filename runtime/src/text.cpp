@@ -210,9 +210,13 @@ TextLayoutResult draw_text(GlyphAtlas& atlas, const RichText& text, std::size_t 
             const float adv = item_width(atlas, it);
             if (it.glyph_index < shown && !it.image) {
                 const GlyphAtlas::Glyph& g = atlas.glyph(it.cp);
-                if (!g.empty)
-                    out.image(atlas.texture(), g.src, {x + g.x0 * scale, baseline + g.y0 * scale, g.src.w * scale, g.src.h * scale},
-                              it.color);
+                if (!g.empty) {
+                    const Rect dst{x + g.x0 * scale, baseline + g.y0 * scale, g.src.w * scale, g.src.h * scale};
+                    if (st.shadow.a > 0)
+                        out.image(atlas.texture(), g.src, {dst.x + st.shadow_offset.x, dst.y + st.shadow_offset.y, dst.w, dst.h},
+                                  {st.shadow.r, st.shadow.g, st.shadow.b, st.shadow.a * it.color.a});
+                    out.image(atlas.texture(), g.src, dst, it.color);
+                }
                 if (!it.ruby.empty()) {  // reading centred over the base, 0.38 of the size
                     float base_w = 0;
                     for (std::size_t k = i; k < line.size() && k < i + it.ruby_len; ++k) base_w += item_width(atlas, line[k]);

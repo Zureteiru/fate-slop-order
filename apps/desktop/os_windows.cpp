@@ -135,16 +135,24 @@ private:
 
 }  // namespace
 
-std::string cache_dir() {
+namespace {
+std::filesystem::path app_dir() {
     char buf[MAX_PATH] = {};
     const DWORD n = GetEnvironmentVariableA("LOCALAPPDATA", buf, MAX_PATH);
     std::filesystem::path p = (n > 0 && n < MAX_PATH) ? std::filesystem::path(buf) : std::filesystem::temp_directory_path();
-    p /= "vnreader";
-    p /= "cache";
+    return p / "vnreader";
+}
+std::string ensure(const std::filesystem::path& p) {
     std::error_code ec;
     std::filesystem::create_directories(p, ec);
     return p.string();
 }
+}  // namespace
+
+std::string cache_dir() { return ensure(app_dir() / "cache"); }
+
+// %LOCALAPPDATA%\vnreader: the key "ui/003.png" is %LOCALAPPDATA%\vnreader\ui\003.png.
+std::string user_dir() { return ensure(app_dir()); }
 
 std::vector<std::string> japanese_font_paths() {
     char win[MAX_PATH] = {};
