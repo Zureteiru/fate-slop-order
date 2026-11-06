@@ -19,7 +19,9 @@ Rules:
 - A task is done only when the test script passes.
 
 Test script: `bash tests/run.sh` (builds and runs the host tests
-in the devkitpro/devkita64 Docker image, gcc 12 with ASan+UBSan).
+in the devkitpro/devkita64 Docker image, gcc 12 with ASan+UBSan;
+about 30 s, ~15 lines of output). While iterating, run one suite:
+`bash tests/run.sh runtime_tests` (or core_tests, dict_tests).
 Windows app: see apps/README.md (`-DVNR_TARGET=desktop`, MSVC).
 
 Player spec: docs/fatecafe_behavior.md. The "vnreader decisions"

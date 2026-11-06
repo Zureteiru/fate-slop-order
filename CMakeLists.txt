@@ -14,8 +14,10 @@ set(VNR_TARGET "host" CACHE STRING "host | desktop")
 set_property(CACHE VNR_TARGET PROPERTY STRINGS host desktop)
 
 if(VNR_TARGET STREQUAL "host")
-    add_compile_options(-Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g)
-    add_link_options(-fsanitize=address,undefined)
+    # Non-PIE: gcc 12's ASan hangs before main() in about half the runs of a PIE binary on kernels
+    # with vm.mmap_rnd_bits=32 (WSL2 6.x); measured 9/20 hangs with PIE, 0/20 without.
+    add_compile_options(-Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -g -fno-pie)
+    add_link_options(-fsanitize=address,undefined -no-pie)
 elseif(MSVC)
     add_compile_options(/W4 /utf-8 /permissive- /wd4100 /wd4244 /wd4267 /wd4305)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX WIN32_LEAN_AND_MEAN)
