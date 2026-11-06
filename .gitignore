@@ -1,0 +1,6 @@
+# Downloads (Fate Café bundles, Atlas scripts, videos). Never commit.
+scratch/
+
+# Build output
+build*/
+*.bin

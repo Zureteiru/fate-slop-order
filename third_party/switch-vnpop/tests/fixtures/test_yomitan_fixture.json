@@ -1,0 +1,98 @@
+[
+  {
+    "term": "食べる",
+    "reading": "たべる",
+    "pos": "v1",
+    "glossary": "to eat; to consume",
+    "pitch": 2,
+    "freq": 150
+  },
+  {
+    "term": "美しい",
+    "reading": "うつくしい",
+    "pos": "adj-i",
+    "glossary": "beautiful; lovely; graceful",
+    "pitch": 3,
+    "freq": 800
+  },
+  {
+    "term": "魔法使い",
+    "reading": "まほうつかい",
+    "pos": "n",
+    "glossary": "magician; wizard; sorcerer",
+    "pitch": 4,
+    "freq": 2500
+  },
+  {
+    "term": "話す",
+    "reading": "はなす",
+    "pos": "v5s",
+    "glossary": "to speak; to talk; to converse",
+    "pitch": 2,
+    "freq": 300
+  },
+  {
+    "term": "勉強する",
+    "reading": "べんきょうする",
+    "pos": "vs",
+    "glossary": "to study",
+    "pitch": 0,
+    "freq": 500
+  },
+  {
+    "term": "来る",
+    "reading": "くる",
+    "pos": "vk",
+    "glossary": "to come; to arrive",
+    "pitch": 1,
+    "freq": 100
+  },
+  {
+    "term": "行く",
+    "reading": "いく",
+    "pos": "v5k",
+    "glossary": "to go; to move towards",
+    "pitch": 0,
+    "freq": 90
+  },
+  {
+    "term": "待つ",
+    "reading": "まつ",
+    "pos": "v5t",
+    "glossary": "to wait",
+    "pitch": 1,
+    "freq": 400
+  },
+  {
+    "term": "読む",
+    "reading": "よむ",
+    "pos": "v5m",
+    "glossary": "to read",
+    "pitch": 1,
+    "freq": 450
+  },
+  {
+    "term": "星",
+    "reading": "ほし",
+    "pos": "n",
+    "glossary": "star",
+    "pitch": 2,
+    "freq": 1200
+  },
+  {
+    "term": "夜",
+    "reading": "よる",
+    "pos": "n",
+    "glossary": "evening; night",
+    "pitch": 1,
+    "freq": 900
+  },
+  {
+    "term": "綺麗",
+    "reading": "きれい",
+    "pos": "adj-na",
+    "glossary": "pretty; lovely; clean; clear",
+    "pitch": 1,
+    "freq": 850
+  }
+]

@@ -1,0 +1,1614 @@
+{
+"entries": [
+{
+"term": "ああ",
+"reading": "あ",
+"glossary": "filler before 0",
+"pos": "n",
+"freq": 5000
+},
+{
+"term": "あぃ",
+"reading": "あ",
+"glossary": "filler before 1",
+"pos": "n",
+"freq": 5001
+},
+{
+"term": "あい",
+"reading": "あ",
+"glossary": "filler before 2",
+"pos": "n",
+"freq": 5002
+},
+{
+"term": "あぅ",
+"reading": "あ",
+"glossary": "filler before 3",
+"pos": "n",
+"freq": 5003
+},
+{
+"term": "あう",
+"reading": "あ",
+"glossary": "filler before 4",
+"pos": "n",
+"freq": 5004
+},
+{
+"term": "あぇ",
+"reading": "あ",
+"glossary": "filler before 5",
+"pos": "n",
+"freq": 5005
+},
+{
+"term": "あえ",
+"reading": "あ",
+"glossary": "filler before 6",
+"pos": "n",
+"freq": 5006
+},
+{
+"term": "あぉ",
+"reading": "あ",
+"glossary": "filler before 7",
+"pos": "n",
+"freq": 5007
+},
+{
+"term": "あお",
+"reading": "あ",
+"glossary": "filler before 8",
+"pos": "n",
+"freq": 5008
+},
+{
+"term": "あか",
+"reading": "あ",
+"glossary": "filler before 9",
+"pos": "n",
+"freq": 5009
+},
+{
+"term": "あが",
+"reading": "あ",
+"glossary": "filler before 10",
+"pos": "n",
+"freq": 5010
+},
+{
+"term": "あき",
+"reading": "あ",
+"glossary": "filler before 11",
+"pos": "n",
+"freq": 5011
+},
+{
+"term": "あぎ",
+"reading": "あ",
+"glossary": "filler before 12",
+"pos": "n",
+"freq": 5012
+},
+{
+"term": "あく",
+"reading": "あ",
+"glossary": "filler before 13",
+"pos": "n",
+"freq": 5013
+},
+{
+"term": "あぐ",
+"reading": "あ",
+"glossary": "filler before 14",
+"pos": "n",
+"freq": 5014
+},
+{
+"term": "あけ",
+"reading": "あ",
+"glossary": "filler before 15",
+"pos": "n",
+"freq": 5015
+},
+{
+"term": "あげ",
+"reading": "あ",
+"glossary": "filler before 16",
+"pos": "n",
+"freq": 5016
+},
+{
+"term": "あこ",
+"reading": "あ",
+"glossary": "filler before 17",
+"pos": "n",
+"freq": 5017
+},
+{
+"term": "あご",
+"reading": "あ",
+"glossary": "filler before 18",
+"pos": "n",
+"freq": 5018
+},
+{
+"term": "あさ",
+"reading": "あ",
+"glossary": "filler before 19",
+"pos": "n",
+"freq": 5019
+},
+{
+"term": "あざ",
+"reading": "あ",
+"glossary": "filler before 20",
+"pos": "n",
+"freq": 5020
+},
+{
+"term": "あし",
+"reading": "あ",
+"glossary": "filler before 21",
+"pos": "n",
+"freq": 5021
+},
+{
+"term": "あじ",
+"reading": "あ",
+"glossary": "filler before 22",
+"pos": "n",
+"freq": 5022
+},
+{
+"term": "あす",
+"reading": "あ",
+"glossary": "filler before 23",
+"pos": "n",
+"freq": 5023
+},
+{
+"term": "あず",
+"reading": "あ",
+"glossary": "filler before 24",
+"pos": "n",
+"freq": 5024
+},
+{
+"term": "あせ",
+"reading": "あ",
+"glossary": "filler before 25",
+"pos": "n",
+"freq": 5025
+},
+{
+"term": "あぜ",
+"reading": "あ",
+"glossary": "filler before 26",
+"pos": "n",
+"freq": 5026
+},
+{
+"term": "あそ",
+"reading": "あ",
+"glossary": "filler before 27",
+"pos": "n",
+"freq": 5027
+},
+{
+"term": "あぞ",
+"reading": "あ",
+"glossary": "filler before 28",
+"pos": "n",
+"freq": 5028
+},
+{
+"term": "あた",
+"reading": "あ",
+"glossary": "filler before 29",
+"pos": "n",
+"freq": 5029
+},
+{
+"term": "あだ",
+"reading": "あ",
+"glossary": "filler before 30",
+"pos": "n",
+"freq": 5030
+},
+{
+"term": "あち",
+"reading": "あ",
+"glossary": "filler before 31",
+"pos": "n",
+"freq": 5031
+},
+{
+"term": "あぢ",
+"reading": "あ",
+"glossary": "filler before 32",
+"pos": "n",
+"freq": 5032
+},
+{
+"term": "あっ",
+"reading": "あ",
+"glossary": "filler before 33",
+"pos": "n",
+"freq": 5033
+},
+{
+"term": "あつ",
+"reading": "あ",
+"glossary": "filler before 34",
+"pos": "n",
+"freq": 5034
+},
+{
+"term": "あづ",
+"reading": "あ",
+"glossary": "filler before 35",
+"pos": "n",
+"freq": 5035
+},
+{
+"term": "あて",
+"reading": "あ",
+"glossary": "filler before 36",
+"pos": "n",
+"freq": 5036
+},
+{
+"term": "あで",
+"reading": "あ",
+"glossary": "filler before 37",
+"pos": "n",
+"freq": 5037
+},
+{
+"term": "あと",
+"reading": "あ",
+"glossary": "filler before 38",
+"pos": "n",
+"freq": 5038
+},
+{
+"term": "あど",
+"reading": "あ",
+"glossary": "filler before 39",
+"pos": "n",
+"freq": 5039
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "topic particle (best)",
+"pos": "prt",
+"freq": 3
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 0",
+"pos": "n",
+"freq": 40000
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 1",
+"pos": "n",
+"freq": 40001
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 2",
+"pos": "n",
+"freq": 40002
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 3",
+"pos": "n",
+"freq": 40003
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 4",
+"pos": "n",
+"freq": 40004
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 5",
+"pos": "n",
+"freq": 40005
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 6",
+"pos": "n",
+"freq": 40006
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 7",
+"pos": "n",
+"freq": 40007
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 8",
+"pos": "n",
+"freq": 40008
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 9",
+"pos": "n",
+"freq": 40009
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 10",
+"pos": "n",
+"freq": 40010
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 11",
+"pos": "n",
+"freq": 40011
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 12",
+"pos": "n",
+"freq": 40012
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 13",
+"pos": "n",
+"freq": 40013
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 14",
+"pos": "n",
+"freq": 40014
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 15",
+"pos": "n",
+"freq": 40015
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 16",
+"pos": "n",
+"freq": 40016
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 17",
+"pos": "n",
+"freq": 40017
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 18",
+"pos": "n",
+"freq": 40018
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 19",
+"pos": "n",
+"freq": 40019
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 20",
+"pos": "n",
+"freq": 40020
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 21",
+"pos": "n",
+"freq": 40021
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 22",
+"pos": "n",
+"freq": 40022
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 23",
+"pos": "n",
+"freq": 40023
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 24",
+"pos": "n",
+"freq": 40024
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 25",
+"pos": "n",
+"freq": 40025
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 26",
+"pos": "n",
+"freq": 40026
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 27",
+"pos": "n",
+"freq": 40027
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 28",
+"pos": "n",
+"freq": 40028
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 29",
+"pos": "n",
+"freq": 40029
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 30",
+"pos": "n",
+"freq": 40030
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 31",
+"pos": "n",
+"freq": 40031
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 32",
+"pos": "n",
+"freq": 40032
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 33",
+"pos": "n",
+"freq": 40033
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 34",
+"pos": "n",
+"freq": 40034
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 35",
+"pos": "n",
+"freq": 40035
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 36",
+"pos": "n",
+"freq": 40036
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 37",
+"pos": "n",
+"freq": 40037
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 38",
+"pos": "n",
+"freq": 40038
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 39",
+"pos": "n",
+"freq": 40039
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 40",
+"pos": "n",
+"freq": 40040
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 41",
+"pos": "n",
+"freq": 40041
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 42",
+"pos": "n",
+"freq": 40042
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 43",
+"pos": "n",
+"freq": 40043
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 44",
+"pos": "n",
+"freq": 40044
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 45",
+"pos": "n",
+"freq": 40045
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 46",
+"pos": "n",
+"freq": 40046
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 47",
+"pos": "n",
+"freq": 40047
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 48",
+"pos": "n",
+"freq": 40048
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 49",
+"pos": "n",
+"freq": 40049
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 50",
+"pos": "n",
+"freq": 40050
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 51",
+"pos": "n",
+"freq": 40051
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 52",
+"pos": "n",
+"freq": 40052
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 53",
+"pos": "n",
+"freq": 40053
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 54",
+"pos": "n",
+"freq": 40054
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 55",
+"pos": "n",
+"freq": 40055
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 56",
+"pos": "n",
+"freq": 40056
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 57",
+"pos": "n",
+"freq": 40057
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 58",
+"pos": "n",
+"freq": 40058
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 59",
+"pos": "n",
+"freq": 40059
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 60",
+"pos": "n",
+"freq": 40060
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 61",
+"pos": "n",
+"freq": 40061
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 62",
+"pos": "n",
+"freq": 40062
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 63",
+"pos": "n",
+"freq": 40063
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 64",
+"pos": "n",
+"freq": 40064
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 65",
+"pos": "n",
+"freq": 40065
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 66",
+"pos": "n",
+"freq": 40066
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 67",
+"pos": "n",
+"freq": 40067
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 68",
+"pos": "n",
+"freq": 40068
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 69",
+"pos": "n",
+"freq": 40069
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 70",
+"pos": "n",
+"freq": 40070
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 71",
+"pos": "n",
+"freq": 40071
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 72",
+"pos": "n",
+"freq": 40072
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 73",
+"pos": "n",
+"freq": 40073
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 74",
+"pos": "n",
+"freq": 40074
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 75",
+"pos": "n",
+"freq": 40075
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 76",
+"pos": "n",
+"freq": 40076
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 77",
+"pos": "n",
+"freq": 40077
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 78",
+"pos": "n",
+"freq": 40078
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 79",
+"pos": "n",
+"freq": 40079
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 80",
+"pos": "n",
+"freq": 40080
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 81",
+"pos": "n",
+"freq": 40081
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 82",
+"pos": "n",
+"freq": 40082
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 83",
+"pos": "n",
+"freq": 40083
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 84",
+"pos": "n",
+"freq": 40084
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 85",
+"pos": "n",
+"freq": 40085
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 86",
+"pos": "n",
+"freq": 40086
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 87",
+"pos": "n",
+"freq": 40087
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 88",
+"pos": "n",
+"freq": 40088
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 89",
+"pos": "n",
+"freq": 40089
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 90",
+"pos": "n",
+"freq": 40090
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 91",
+"pos": "n",
+"freq": 40091
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 92",
+"pos": "n",
+"freq": 40092
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 93",
+"pos": "n",
+"freq": 40093
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 94",
+"pos": "n",
+"freq": 40094
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 95",
+"pos": "n",
+"freq": 40095
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 96",
+"pos": "n",
+"freq": 40096
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 97",
+"pos": "n",
+"freq": 40097
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 98",
+"pos": "n",
+"freq": 40098
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 99",
+"pos": "n",
+"freq": 40099
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 100",
+"pos": "n",
+"freq": 40100
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 101",
+"pos": "n",
+"freq": 40101
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 102",
+"pos": "n",
+"freq": 40102
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 103",
+"pos": "n",
+"freq": 40103
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 104",
+"pos": "n",
+"freq": 40104
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 105",
+"pos": "n",
+"freq": 40105
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 106",
+"pos": "n",
+"freq": 40106
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 107",
+"pos": "n",
+"freq": 40107
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 108",
+"pos": "n",
+"freq": 40108
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 109",
+"pos": "n",
+"freq": 40109
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 110",
+"pos": "n",
+"freq": 40110
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 111",
+"pos": "n",
+"freq": 40111
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 112",
+"pos": "n",
+"freq": 40112
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 113",
+"pos": "n",
+"freq": 40113
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 114",
+"pos": "n",
+"freq": 40114
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 115",
+"pos": "n",
+"freq": 40115
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 116",
+"pos": "n",
+"freq": 40116
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 117",
+"pos": "n",
+"freq": 40117
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 118",
+"pos": "n",
+"freq": 40118
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 119",
+"pos": "n",
+"freq": 40119
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 120",
+"pos": "n",
+"freq": 40120
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 121",
+"pos": "n",
+"freq": 40121
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 122",
+"pos": "n",
+"freq": 40122
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 123",
+"pos": "n",
+"freq": 40123
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 124",
+"pos": "n",
+"freq": 40124
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 125",
+"pos": "n",
+"freq": 40125
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 126",
+"pos": "n",
+"freq": 40126
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 127",
+"pos": "n",
+"freq": 40127
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 128",
+"pos": "n",
+"freq": 40128
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 129",
+"pos": "n",
+"freq": 40129
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 130",
+"pos": "n",
+"freq": 40130
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 131",
+"pos": "n",
+"freq": 40131
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 132",
+"pos": "n",
+"freq": 40132
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 133",
+"pos": "n",
+"freq": 40133
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 134",
+"pos": "n",
+"freq": 40134
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 135",
+"pos": "n",
+"freq": 40135
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 136",
+"pos": "n",
+"freq": 40136
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 137",
+"pos": "n",
+"freq": 40137
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 138",
+"pos": "n",
+"freq": 40138
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 139",
+"pos": "n",
+"freq": 40139
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 140",
+"pos": "n",
+"freq": 40140
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 141",
+"pos": "n",
+"freq": 40141
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 142",
+"pos": "n",
+"freq": 40142
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 143",
+"pos": "n",
+"freq": 40143
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 144",
+"pos": "n",
+"freq": 40144
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 145",
+"pos": "n",
+"freq": 40145
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 146",
+"pos": "n",
+"freq": 40146
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 147",
+"pos": "n",
+"freq": 40147
+},
+{
+"term": "は",
+"reading": "は",
+"glossary": "rare homograph 148",
+"pos": "n",
+"freq": 40148
+},
+{
+"term": "ひあ",
+"reading": "ひ",
+"glossary": "filler after 0",
+"pos": "n",
+"freq": 6000
+},
+{
+"term": "ひぃ",
+"reading": "ひ",
+"glossary": "filler after 1",
+"pos": "n",
+"freq": 6001
+},
+{
+"term": "ひい",
+"reading": "ひ",
+"glossary": "filler after 2",
+"pos": "n",
+"freq": 6002
+},
+{
+"term": "ひぅ",
+"reading": "ひ",
+"glossary": "filler after 3",
+"pos": "n",
+"freq": 6003
+},
+{
+"term": "ひう",
+"reading": "ひ",
+"glossary": "filler after 4",
+"pos": "n",
+"freq": 6004
+},
+{
+"term": "ひぇ",
+"reading": "ひ",
+"glossary": "filler after 5",
+"pos": "n",
+"freq": 6005
+},
+{
+"term": "ひえ",
+"reading": "ひ",
+"glossary": "filler after 6",
+"pos": "n",
+"freq": 6006
+},
+{
+"term": "ひぉ",
+"reading": "ひ",
+"glossary": "filler after 7",
+"pos": "n",
+"freq": 6007
+},
+{
+"term": "ひお",
+"reading": "ひ",
+"glossary": "filler after 8",
+"pos": "n",
+"freq": 6008
+},
+{
+"term": "ひか",
+"reading": "ひ",
+"glossary": "filler after 9",
+"pos": "n",
+"freq": 6009
+},
+{
+"term": "ひが",
+"reading": "ひ",
+"glossary": "filler after 10",
+"pos": "n",
+"freq": 6010
+},
+{
+"term": "ひき",
+"reading": "ひ",
+"glossary": "filler after 11",
+"pos": "n",
+"freq": 6011
+},
+{
+"term": "ひぎ",
+"reading": "ひ",
+"glossary": "filler after 12",
+"pos": "n",
+"freq": 6012
+},
+{
+"term": "ひく",
+"reading": "ひ",
+"glossary": "filler after 13",
+"pos": "n",
+"freq": 6013
+},
+{
+"term": "ひぐ",
+"reading": "ひ",
+"glossary": "filler after 14",
+"pos": "n",
+"freq": 6014
+},
+{
+"term": "ひけ",
+"reading": "ひ",
+"glossary": "filler after 15",
+"pos": "n",
+"freq": 6015
+},
+{
+"term": "ひげ",
+"reading": "ひ",
+"glossary": "filler after 16",
+"pos": "n",
+"freq": 6016
+},
+{
+"term": "ひこ",
+"reading": "ひ",
+"glossary": "filler after 17",
+"pos": "n",
+"freq": 6017
+},
+{
+"term": "ひご",
+"reading": "ひ",
+"glossary": "filler after 18",
+"pos": "n",
+"freq": 6018
+},
+{
+"term": "ひさ",
+"reading": "ひ",
+"glossary": "filler after 19",
+"pos": "n",
+"freq": 6019
+},
+{
+"term": "ひざ",
+"reading": "ひ",
+"glossary": "filler after 20",
+"pos": "n",
+"freq": 6020
+},
+{
+"term": "ひし",
+"reading": "ひ",
+"glossary": "filler after 21",
+"pos": "n",
+"freq": 6021
+},
+{
+"term": "ひじ",
+"reading": "ひ",
+"glossary": "filler after 22",
+"pos": "n",
+"freq": 6022
+},
+{
+"term": "ひす",
+"reading": "ひ",
+"glossary": "filler after 23",
+"pos": "n",
+"freq": 6023
+},
+{
+"term": "ひず",
+"reading": "ひ",
+"glossary": "filler after 24",
+"pos": "n",
+"freq": 6024
+},
+{
+"term": "ひせ",
+"reading": "ひ",
+"glossary": "filler after 25",
+"pos": "n",
+"freq": 6025
+},
+{
+"term": "ひぜ",
+"reading": "ひ",
+"glossary": "filler after 26",
+"pos": "n",
+"freq": 6026
+},
+{
+"term": "ひそ",
+"reading": "ひ",
+"glossary": "filler after 27",
+"pos": "n",
+"freq": 6027
+},
+{
+"term": "ひぞ",
+"reading": "ひ",
+"glossary": "filler after 28",
+"pos": "n",
+"freq": 6028
+},
+{
+"term": "ひた",
+"reading": "ひ",
+"glossary": "filler after 29",
+"pos": "n",
+"freq": 6029
+},
+{
+"term": "ひだ",
+"reading": "ひ",
+"glossary": "filler after 30",
+"pos": "n",
+"freq": 6030
+},
+{
+"term": "ひち",
+"reading": "ひ",
+"glossary": "filler after 31",
+"pos": "n",
+"freq": 6031
+},
+{
+"term": "ひぢ",
+"reading": "ひ",
+"glossary": "filler after 32",
+"pos": "n",
+"freq": 6032
+},
+{
+"term": "ひっ",
+"reading": "ひ",
+"glossary": "filler after 33",
+"pos": "n",
+"freq": 6033
+},
+{
+"term": "ひつ",
+"reading": "ひ",
+"glossary": "filler after 34",
+"pos": "n",
+"freq": 6034
+},
+{
+"term": "ひづ",
+"reading": "ひ",
+"glossary": "filler after 35",
+"pos": "n",
+"freq": 6035
+},
+{
+"term": "ひて",
+"reading": "ひ",
+"glossary": "filler after 36",
+"pos": "n",
+"freq": 6036
+},
+{
+"term": "ひで",
+"reading": "ひ",
+"glossary": "filler after 37",
+"pos": "n",
+"freq": 6037
+},
+{
+"term": "ひと",
+"reading": "ひ",
+"glossary": "filler after 38",
+"pos": "n",
+"freq": 6038
+},
+{
+"term": "ひど",
+"reading": "ひ",
+"glossary": "filler after 39",
+"pos": "n",
+"freq": 6039
+}
+]
+}
