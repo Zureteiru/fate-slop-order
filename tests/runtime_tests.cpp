@@ -352,3 +352,186 @@ TEST(text_wraps_at_the_game_width) {
         "But please don't be discouraged because you're a public applicant. We need all of you for this mission.", {});
     CHECK_EQ(draw_text(atlas, long_line, long_line.glyph_count, b, out).total_lines, 2);
 }
+
+// ---- story buttons (LOG / AUTO) and the backlog ----
+
+namespace {
+Vec2 centre(const Rect& r) { return {r.x + r.w / 2, r.y + r.h / 2}; }
+bool contains(const Rect& outer, const Rect& inner) {
+    return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w &&
+           inner.y + inner.h <= outer.y + outer.h;
+}
+InputEvent ev(InputEvent::Kind k, Vec2 p = {}) { return {k, p, 0}; }
+InputEvent scroll_ev(float dy) { return {InputEvent::Kind::Scroll, {0, dy}, 0}; }
+
+// Plays the Fuyuki part to the Mash line at script line 56 and waits until it is fully shown.
+bool to_line56(App& app) {
+    if (!play_until(app, [&] { return app.script_index() == 1 && drive::at_say(*app.player(), 56); })) return false;
+    for (int i = 0; i < 100 && app.player()->status() != Status::AwaitAdvance; ++i) app.update(0.1, {});
+    return app.player()->status() == Status::AwaitAdvance;
+}
+}  // namespace
+
+TEST(story_buttons_hit_testing) {
+    const UiLayout ui;
+    CHECK(story_button_at(ui, centre(ui.log_button), true) == StoryButton::Log);
+    CHECK(story_button_at(ui, centre(ui.auto_on), true) == StoryButton::Auto);
+    CHECK(story_button_at(ui, centre(ui.auto_off), true) == StoryButton::Auto);
+    CHECK(story_button_at(ui, centre(ui.text), true) == StoryButton::None);
+    CHECK(story_button_at(ui, {600, 200}, true) == StoryButton::None);
+    CHECK(story_button_at(ui, centre(ui.log_button), false) == StoryButton::None);  // no text box, no buttons
+    // every drawn button lies inside its tap area, and the areas stay clear of the text column
+    CHECK(contains(ui.log_hit, ui.log_button));
+    CHECK(contains(ui.auto_hit, ui.auto_on));
+    CHECK(contains(ui.auto_hit, ui.auto_off));
+    CHECK(ui.log_hit.x >= ui.text.x + ui.text.w);
+    CHECK(ui.log_hit.y + ui.log_hit.h <= ui.auto_hit.y);
+}
+
+TEST(app_auto_button_toggles_without_advancing) {
+    Env env;
+    fakes::MemFiles user;
+    add_sheets(user);
+    env.platform.user = &user;
+    AppConfig cfg;
+    cfg.script_ids = {"0100000010", "0100000011"};
+    App app(env.platform, cfg);
+    REQUIRE(to_line56(app));
+    const UiLayout& ui = app.ui();
+    const Quad* log = find_src(app.draw_list(), skin::kLogButton);
+    REQUIRE(log);
+    CHECK(near(log->pos[0], {ui.log_button.x, ui.log_button.y}));
+    const Quad* off = find_src(app.draw_list(), skin::kAutoOff);
+    REQUIRE(off);
+    CHECK(near(off->pos[2], {ui.auto_off.x + ui.auto_off.w, ui.auto_off.y + ui.auto_off.h}));
+    CHECK(find_src(app.draw_list(), skin::kAutoOn) == nullptr);
+
+    const std::size_t lines = app.player()->backlog().size();
+    app.update(0, {ev(InputEvent::Kind::Pointer, centre(ui.auto_hit)), ev(InputEvent::Kind::PointerUp, centre(ui.auto_hit))});
+    CHECK(app.auto_mode());
+    CHECK_EQ(app.player()->backlog().size(), lines);  // the tap did not advance the text
+    CHECK(app.player()->status() == Status::AwaitAdvance);
+    const Quad* on = find_src(app.draw_list(), skin::kAutoOn);
+    REQUIRE(on);
+    CHECK(near(on->pos[0], {ui.auto_on.x, ui.auto_on.y}));
+    CHECK(find_src(app.draw_list(), skin::kAutoOff) == nullptr);
+
+    app.update(0, {ev(InputEvent::Kind::ToggleAuto)});  // the A key / Y button
+    CHECK(!app.auto_mode());
+    CHECK(find_src(app.draw_list(), skin::kAutoOff) != nullptr);
+
+    // a tap on the text still advances
+    app.update(0, {ev(InputEvent::Kind::Pointer, centre(ui.text))});
+    CHECK(app.player()->status() != Status::AwaitAdvance || app.player()->backlog().size() > lines);
+}
+
+TEST(app_log_button_opens_backlog_and_pauses_the_story) {
+    Env env;
+    AppConfig cfg;
+    cfg.script_ids = {"0100000010", "0100000011"};
+    App app(env.platform, cfg);
+    REQUIRE(to_line56(app));
+    const UiLayout& ui = app.ui();
+    app.update(0, {ev(InputEvent::Kind::ToggleAuto)});
+    const std::size_t lines = app.player()->backlog().size();
+    const std::size_t pc = app.player()->pc();
+
+    app.update(0, {ev(InputEvent::Kind::Pointer, centre(ui.log_hit)), ev(InputEvent::Kind::PointerUp, centre(ui.log_hit))});
+    REQUIRE(app.backlog().is_open());  // the release of the opening tap does not close it again
+    CHECK_EQ(app.player()->backlog().size(), lines);
+    for (int i = 0; i < 300; ++i) app.update(0.1, {});  // 30 s with AUTO on: nothing moves under the log
+    CHECK_EQ(app.player()->pc(), pc);
+    CHECK(app.backlog().is_open());
+
+    app.update(0, {ev(InputEvent::Kind::Back)});  // B / right click / Backspace
+    CHECK(!app.backlog().is_open());
+    app.update(0, {ev(InputEvent::Kind::OpenLog)});  // L / X
+    CHECK(app.backlog().is_open());
+    app.update(0, {ev(InputEvent::Kind::Cancel)});  // Esc closes the log ...
+    CHECK(!app.backlog().is_open());
+    CHECK(!app.quit_requested());
+    app.update(0, {ev(InputEvent::Kind::OpenLog)});
+    app.update(0, {ev(InputEvent::Kind::Pointer, {600, 300}), ev(InputEvent::Kind::PointerUp, {602, 301})});  // a tap
+    CHECK(!app.backlog().is_open());
+    app.update(0, {ev(InputEvent::Kind::Cancel)});  // ... and quits when it is closed
+    CHECK(app.quit_requested());
+}
+
+TEST(app_backlog_scrolls_with_wheel_and_drag) {
+    Env env;
+    AppConfig cfg;
+    cfg.script_ids = {"0100000011"};
+    App app(env.platform, cfg);
+    REQUIRE(play_until(app, [&] { return app.player()->backlog().size() >= 40; }));
+    app.update(0, {ev(InputEvent::Kind::OpenLog)});
+    const Backlog& log = app.backlog();
+    REQUIRE(log.is_open());
+    REQUIRE(log.max_scroll() > 500);                   // 40 entries are much taller than the screen
+    CHECK_NEAR(log.scroll(), log.max_scroll(), 1e-3);  // opens on the newest line
+
+    const float bottom = log.scroll();
+    app.update(0, {scroll_ev(-60)});  // one wheel notch up (or the stick / d-pad, same event)
+    CHECK_NEAR(log.scroll(), bottom - 60, 1e-3);
+    app.update(0, {scroll_ev(1e6f)});
+    CHECK_NEAR(log.scroll(), log.max_scroll(), 1e-3);  // clamped at the newest
+    app.update(0, {scroll_ev(-1e6f)});
+    CHECK_NEAR(log.scroll(), 0, 1e-3);                 // and at the oldest
+
+    // drag: the list follows the pointer; releasing after a drag keeps the log open
+    app.update(0, {ev(InputEvent::Kind::Pointer, {600, 400})});
+    app.update(0, {ev(InputEvent::Kind::PointerMove, {600, 300})});
+    CHECK(log.dragging());
+    CHECK_NEAR(log.scroll(), 100, 1e-3);
+    app.update(0, {ev(InputEvent::Kind::PointerMove, {600, 150})});
+    CHECK_NEAR(log.scroll(), 250, 1e-3);
+    app.update(0, {ev(InputEvent::Kind::PointerUp, {600, 150})});
+    CHECK(log.is_open());
+    CHECK_NEAR(log.scroll(), 250, 1e-3);
+
+    // scrolling changes which lines are drawn
+    app.update(0, {scroll_ev(-1e6f)});
+    std::vector<float> top_ys;
+    for (const Quad& q : app.draw_list().quads) top_ys.push_back(q.pos[0].y);
+    app.update(0, {scroll_ev(1e6f)});
+    std::vector<float> bottom_ys;
+    for (const Quad& q : app.draw_list().quads) bottom_ys.push_back(q.pos[0].y);
+    CHECK(top_ys.size() > 20);
+    CHECK(bottom_ys.size() > 20);
+    CHECK(top_ys != bottom_ys);
+}
+
+TEST(backlog_draws_names_and_ruby) {
+    TextureStore tex;
+    GlyphAtlas atlas(tex, fakes::bytes_of(kDir + "/MPLUS1p-Regular.ttf"), 0);
+    REQUIRE(atlas.ok());
+    std::vector<BacklogEntry> entries(2);
+    entries[0].speaker = parse_rich_text("\xE3\x83\x9E\xE3\x82\xB7\xE3\x83\xA5", {});  // Mash
+    entries[0].text = parse_rich_text("[#\xE5\x85\x88\xE8\xBC\xA9:\xE3\x81\x9B\xE3\x82\x93\xE3\x81\xB1\xE3\x81\x84]\xE3\x80\x81ok.", {});  // [#senpai:reading], ok.
+    entries[1].text = parse_rich_text("Narration with no speaker.", {});
+    Backlog log;
+    log.open(entries, atlas);
+    REQUIRE(log.is_open());
+    const BacklogStyle& st = log.style();
+    CHECK_NEAR(log.content_height(), st.name_height + 2 * st.line_height + 2 * st.entry_gap, 1e-3);
+    CHECK_NEAR(log.max_scroll(), 0, 1e-3);  // fits: nothing to scroll
+    DrawList out;
+    log.draw(entries, atlas, out);
+    // glyph quads: the name above the first entry, the ruby above its base text
+    float name_y = 1e9f, ruby_y = 1e9f, text_y = 1e9f;
+    std::size_t glyphs = 0;
+    for (const Quad& q : out.quads) {
+        if (q.texture != atlas.texture()) continue;
+        ++glyphs;
+        if (q.color.r == 0) continue;  // drop shadows
+        if (q.color.r < 0.9f) name_y = std::min(name_y, q.pos[0].y);  // name ink (light blue)
+        else if (std::fabs(q.color.r - 0.95f) < 1e-4f) ruby_y = std::min(ruby_y, q.pos[0].y);  // ruby ink
+        else text_y = std::min(text_y, q.pos[0].y);
+    }
+    CHECK(glyphs > 30);
+    CHECK(name_y < ruby_y);
+    CHECK(ruby_y < text_y);
+    log.close();
+    DrawList none;
+    log.draw(entries, atlas, none);
+    CHECK(none.quads.empty());
+}

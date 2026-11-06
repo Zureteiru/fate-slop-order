@@ -45,6 +45,7 @@ add_library(vnr_runtime STATIC
     runtime/src/draw_list.cpp
     runtime/src/image.cpp
     runtime/src/json.cpp
+    runtime/src/backlog.cpp
     runtime/src/scene_render.cpp
     runtime/src/text.cpp
     runtime/src/ui_skin.cpp

@@ -231,7 +231,7 @@ TextLayoutResult draw_text(GlyphAtlas& atlas, const RichText& text, std::size_t 
     for (int l = 0; l < res.total_lines; ++l)
         for (const Item& it : lines[static_cast<std::size_t>(l)])
             if (it.glyph_index < shown) last_line = l;
-    res.first_visible_line = std::max(0, last_line - st.max_lines + 1);
+    res.first_visible_line = st.first_line >= 0 ? st.first_line : std::max(0, last_line - st.max_lines + 1);
 
     const float k_raster = 1.f / atlas.raster_px();
     for (int l = res.first_visible_line; l < res.total_lines && l < res.first_visible_line + st.max_lines; ++l) {
@@ -275,6 +275,11 @@ TextLayoutResult draw_text(GlyphAtlas& atlas, const RichText& text, std::size_t 
     }
     atlas.flush();
     return res;
+}
+
+int count_lines(GlyphAtlas& atlas, const RichText& text, const TextStyleBox& style) {
+    if (!atlas.ok()) return 1;
+    return static_cast<int>(break_lines(atlas, text, style).size());
 }
 
 float text_width(GlyphAtlas& atlas, const RichText& text, float px) {

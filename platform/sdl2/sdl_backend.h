@@ -35,6 +35,9 @@ private:
 // Translates one SDL event; appends zero or more runtime events. Returns false on quit.
 bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<rt::InputEvent>& out);
 
+// Held input that has no event of its own: the sticks scroll the log. Call once per frame.
+void poll_held(double dt, std::vector<rt::InputEvent>& out);
+
 // Opens the first game controller found (Switch Joy-Cons / Pro Controller, Xbox pads on desktop).
 void open_controllers();
 

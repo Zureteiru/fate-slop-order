@@ -27,6 +27,7 @@ struct SceneAssets {
     std::map<int, FigureInfo> figures;
     UiSkin skin;       // the game's story UI art, when the user supplied the sheets
     double clock = 0;  // seconds since start, for UI animation (the "next" marker)
+    bool auto_mode = false;  // AUTO button lit
 };
 
 // Layout of the story UI (stage units), shared with input hit-testing. Every number is measured
@@ -48,7 +49,20 @@ struct UiLayout {
     float choices_centre_y = 217.1f;            // centre of the choice stack while the text box shows
     Rect next_marker{1100, 497, 28, 56};        // bottom right of the box, shown while waiting for a tap
     float box_opacity = 0.88f;
+    // LOG above AUTO inside the box's right edge, both centred on x 1139.2 (video pcFfZvZqbmU 6:40:
+    // LOG bar centre y 446.1, drawn 1.14x the sheet piece; AUTO box centre y 486.3, 1.10x).
+    Rect log_button{1125.5f, 431.3f, 27.4f, 30.8f};
+    Rect auto_on{1121.6f, 467.6f, 36.3f, 49.5f};
+    Rect auto_off{1120.5f, 473.1f, 27.5f, 40.7f};
+    float button_opacity = 0.62f;               // LOG and AUTO off are see-through white; AUTO on is opaque
+    Rect log_hit{1108, 425, 62, 40};            // tap areas: the top and bottom of the box's right edge
+    Rect auto_hit{1108, 465, 62, 64};
 };
+
+enum class StoryButton { None, Log, Auto };
+
+// Which story button (if any) a tap at `p` (stage units) hits. Buttons exist only while the text box shows.
+StoryButton story_button_at(const UiLayout& ui, Vec2 p, bool text_box_visible);
 
 std::vector<Rect> choice_rects(const ChoiceOp& choice, const UiLayout& ui, bool text_box_visible);
 

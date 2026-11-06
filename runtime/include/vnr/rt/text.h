@@ -52,6 +52,7 @@ struct TextStyleBox {
     float px = 20;            // font size for scale 1
     float line_height = 32.4f;
     int max_lines = 2;        // the box shows the last `max_lines` lines that contain revealed text
+    int first_line = -1;      // >= 0: show lines from this one instead (backlog scrolling)
     Color ink{1, 1, 1, 1};
     Color shadow{0, 0, 0, 0};  // drop shadow under each glyph; alpha 0 = none
     Vec2 shadow_offset{2, 2};
@@ -65,6 +66,9 @@ struct TextLayoutResult {
 // Appends glyph quads for `text` (only the first `shown` glyphs) to `out`.
 TextLayoutResult draw_text(GlyphAtlas& atlas, const RichText& text, std::size_t shown, const TextStyleBox& style,
                            DrawList& out);
+
+// Number of lines `text` wraps to in `style.box.w`.
+int count_lines(GlyphAtlas& atlas, const RichText& text, const TextStyleBox& style);
 
 // Width of a single line of plain text in stage units (for name plates and buttons).
 float text_width(GlyphAtlas& atlas, const RichText& text, float px);

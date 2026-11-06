@@ -48,6 +48,7 @@ The default is Fuyuki part 1 (NA). Other options:
 vnreader.exe --region JP --scripts 0100000010,0100000011
 vnreader.exe --smoke 14 --screenshot shot.bmp   # hidden window: tap 14 lines, save a frame, exit
 vnreader.exe --smoke 0 --until "after effect" --screenshot shot.bmp   # stop on the line containing that text
+vnreader.exe --smoke 40 --log --screenshot log.bmp   # --log opens the LOG screen, --auto turns AUTO on, before the capture
 ```
 
 **Controls:**
@@ -57,9 +58,12 @@ vnreader.exe --smoke 0 --until "after effect" --screenshot shot.bmp   # stop on 
 | click / Space / Enter / → / A | advance |
 | right click / Backspace / ← / B | back |
 | click a choice, or 1–9 | choose |
-| `A` key / Y | toggle auto |
+| click AUTO / `A` key / Y | toggle auto |
+| click LOG / `L` / X | open the log |
+| in the log: wheel, drag, ↑ ↓ PgUp PgDn, d-pad, sticks | scroll |
+| in the log: click, Esc, right click / B, Space / A | close the log |
 | `S` | skip to the next script |
-| Esc | quit |
+| Esc | quit (when the log is closed) |
 
 ## Game UI art
 
@@ -95,6 +99,11 @@ within 1–2 px (`--smoke 0 --until "text"` captures the frame for a given line)
 - **Name tab:** 283×45, drawn over the box's top-left corner, its point sticking out to the left.
 - **Text:** FOT-Skip Std B at 28.7 px (names 29 px, choices 28.5 px), two lines 48 apart.
 - **Choices:** 777×71 frames, 30 px apart, the dialogue stays visible underneath.
+- **LOG and AUTO:** inside the box's right edge, both centred on x 1139.2; LOG's bar at y 446.1 (1.14× the
+  sheet piece), AUTO's box at y 486.3 (1.10×). AUTO uses the outlined piece when off and the cyan one when on.
+  Taps on them don't advance the text.
+- **Log screen:** past lines with speaker names over the dimmed story screen (the story pauses), with a
+  scrollbar on the right. It follows the game loosely and wasn't measured.
 
 ## Not in the skeleton yet
 
@@ -103,4 +112,4 @@ within 1–2 px (`--smoke 0 --until "text"` captures the frame for a given line)
 - **Wipes:** wipe patterns are drawn as an even fade.
 - **Effects:** particle effects are not drawn.
 - **Controller choices:** a controller cannot move between choice buttons yet. Use the 1–9 keys or the mouse.
-- **Story buttons:** SKIP, AUTO, LOG and hide-message are on the sheets but not drawn yet.
+- **Story buttons:** SKIP and hide-message are not drawn (SKIP is left out on purpose).

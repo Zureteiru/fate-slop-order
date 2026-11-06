@@ -1,6 +1,7 @@
 #include "sdl_backend.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace vnr::sdl {
 
@@ -115,9 +116,48 @@ void Renderer::draw(const rt::DrawList& list) {
     SDL_RenderSetClipRect(r_, nullptr);
 }
 
+namespace {
+std::vector<SDL_GameController*> g_pads;
+constexpr float kWheelStep = 60;    // stage units per wheel notch
+constexpr float kLineStep = 47;     // arrow keys / d-pad: one log line
+constexpr float kPageStep = 400;
+constexpr float kStickSpeed = 900;  // stage units per second at full tilt
+constexpr int kStickDeadzone = 8000;
+
+void open_pad(int index) {
+    if (SDL_GameController* c = SDL_GameControllerOpen(index)) g_pads.push_back(c);
+}
+
+InputEvent scroll(float dy) { return {InputEvent::Kind::Scroll, {0, dy}, 0}; }
+
+Vec2 finger_pos(const SDL_TouchFingerEvent& f, const Renderer& renderer) {
+    int w = 0, h = 0;
+    if (SDL_Window* win = SDL_GetWindowFromID(f.windowID)) SDL_GetWindowSize(win, &w, &h);
+    return renderer.to_stage(f.x * static_cast<float>(w), f.y * static_cast<float>(h));
+}
+
+Vec2 mouse_pos(int x, int y, const Renderer& renderer) {
+    return renderer.to_stage(static_cast<float>(x), static_cast<float>(y));
+}
+}  // namespace
+
 void open_controllers() {
     for (int i = 0; i < SDL_NumJoysticks(); ++i)
-        if (SDL_IsGameController(i)) SDL_GameControllerOpen(i);
+        if (SDL_IsGameController(i)) open_pad(i);
+}
+
+void poll_held(double dt, std::vector<InputEvent>& out) {
+    int best = 0;
+    for (SDL_GameController* c : g_pads) {
+        if (!SDL_GameControllerGetAttached(c)) continue;
+        for (SDL_GameControllerAxis a : {SDL_CONTROLLER_AXIS_RIGHTY, SDL_CONTROLLER_AXIS_LEFTY}) {
+            const int v = SDL_GameControllerGetAxis(c, a);
+            if (std::abs(v) > std::abs(best)) best = v;
+        }
+    }
+    if (std::abs(best) <= kStickDeadzone) return;
+    const float tilt = static_cast<float>(best) / 32767.f;  // down = + = newer lines
+    out.push_back(scroll(tilt * kStickSpeed * static_cast<float>(dt)));
 }
 
 bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<InputEvent>& out) {
@@ -127,17 +167,32 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
         case SDL_MOUSEBUTTONDOWN:
             if (e.button.which == SDL_TOUCH_MOUSEID) break;  // handled as a finger event
             if (e.button.button == SDL_BUTTON_LEFT)
-                out.push_back({InputEvent::Kind::Pointer, renderer.to_stage(static_cast<float>(e.button.x), static_cast<float>(e.button.y)), 0});
+                out.push_back({InputEvent::Kind::Pointer, mouse_pos(e.button.x, e.button.y, renderer), 0});
             else if (e.button.button == SDL_BUTTON_RIGHT)
                 out.push_back({InputEvent::Kind::Back, {}, 0});
             break;
-        case SDL_FINGERDOWN: {
-            int w = 0, h = 0;
-            SDL_Window* win = SDL_GetWindowFromID(e.tfinger.windowID);
-            if (win) SDL_GetWindowSize(win, &w, &h);
-            out.push_back({InputEvent::Kind::Pointer, renderer.to_stage(e.tfinger.x * static_cast<float>(w), e.tfinger.y * static_cast<float>(h)), 0});
+        case SDL_MOUSEMOTION:
+            if (e.motion.which == SDL_TOUCH_MOUSEID || !(e.motion.state & SDL_BUTTON_LMASK)) break;
+            out.push_back({InputEvent::Kind::PointerMove, mouse_pos(e.motion.x, e.motion.y, renderer), 0});
+            break;
+        case SDL_MOUSEBUTTONUP:
+            if (e.button.which == SDL_TOUCH_MOUSEID || e.button.button != SDL_BUTTON_LEFT) break;
+            out.push_back({InputEvent::Kind::PointerUp, mouse_pos(e.button.x, e.button.y, renderer), 0});
+            break;
+        case SDL_MOUSEWHEEL: {
+            const float y = e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -e.wheel.preciseY : e.wheel.preciseY;
+            if (y != 0) out.push_back(scroll(-y * kWheelStep));  // wheel up = older lines
             break;
         }
+        case SDL_FINGERDOWN:
+            out.push_back({InputEvent::Kind::Pointer, finger_pos(e.tfinger, renderer), 0});
+            break;
+        case SDL_FINGERMOTION:
+            out.push_back({InputEvent::Kind::PointerMove, finger_pos(e.tfinger, renderer), 0});
+            break;
+        case SDL_FINGERUP:
+            out.push_back({InputEvent::Kind::PointerUp, finger_pos(e.tfinger, renderer), 0});
+            break;
         case SDL_KEYDOWN:
             switch (e.key.keysym.sym) {
                 case SDLK_SPACE:
@@ -146,9 +201,14 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
                 case SDLK_KP_ENTER: out.push_back({InputEvent::Kind::Advance, {}, 0}); break;
                 case SDLK_BACKSPACE:
                 case SDLK_LEFT: out.push_back({InputEvent::Kind::Back, {}, 0}); break;
+                case SDLK_UP: out.push_back(scroll(-kLineStep)); break;
+                case SDLK_DOWN: out.push_back(scroll(kLineStep)); break;
+                case SDLK_PAGEUP: out.push_back(scroll(-kPageStep)); break;
+                case SDLK_PAGEDOWN: out.push_back(scroll(kPageStep)); break;
                 case SDLK_a: out.push_back({InputEvent::Kind::ToggleAuto, {}, 0}); break;
+                case SDLK_l: out.push_back({InputEvent::Kind::OpenLog, {}, 0}); break;
                 case SDLK_s: out.push_back({InputEvent::Kind::SkipScript, {}, 0}); break;
-                case SDLK_ESCAPE: return false;
+                case SDLK_ESCAPE: out.push_back({InputEvent::Kind::Cancel, {}, 0}); break;
                 default:
                     if (e.key.keysym.sym >= SDLK_1 && e.key.keysym.sym <= SDLK_9)
                         out.push_back({InputEvent::Kind::Choose, {}, static_cast<std::size_t>(e.key.keysym.sym - SDLK_1)});
@@ -159,12 +219,15 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
                 case SDL_CONTROLLER_BUTTON_A: out.push_back({InputEvent::Kind::Advance, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_B: out.push_back({InputEvent::Kind::Back, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_Y: out.push_back({InputEvent::Kind::ToggleAuto, {}, 0}); break;
+                case SDL_CONTROLLER_BUTTON_X: out.push_back({InputEvent::Kind::OpenLog, {}, 0}); break;
+                case SDL_CONTROLLER_BUTTON_DPAD_UP: out.push_back(scroll(-kLineStep)); break;
+                case SDL_CONTROLLER_BUTTON_DPAD_DOWN: out.push_back(scroll(kLineStep)); break;
                 case SDL_CONTROLLER_BUTTON_START: return false;
                 default: break;
             }
             break;
         case SDL_CONTROLLERDEVICEADDED:
-            SDL_GameControllerOpen(e.cdevice.which);
+            open_pad(e.cdevice.which);
             break;
         default:
             break;

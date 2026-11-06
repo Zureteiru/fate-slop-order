@@ -138,6 +138,42 @@ constexpr Color kShadow{0, 0, 0, 0.75f};
 
 }  // namespace
 
+namespace {
+bool inside(const Rect& r, Vec2 p) { return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
+
+Rect shifted(const Rect& r, Vec2 d) { return {r.x + d.x, r.y + d.y, r.w, r.h}; }
+
+void outline(DrawList& out, const Rect& r, float t, Color c) {
+    out.rect({r.x, r.y, r.w, t}, c);
+    out.rect({r.x, r.y + r.h - t, r.w, t}, c);
+    out.rect({r.x, r.y + t, t, r.h - 2 * t}, c);
+    out.rect({r.x + r.w - t, r.y + t, t, r.h - 2 * t}, c);
+}
+
+void draw_story_buttons(const SceneAssets& a, const UiLayout& ui, Vec2 ms, DrawList& out) {
+    const UiSkin& skin = a.skin;
+    const Color dim{1, 1, 1, ui.button_opacity};
+    const Rect log = shifted(ui.log_button, ms);
+    const Rect autob = shifted(a.auto_mode ? ui.auto_on : ui.auto_off, ms);
+    if (skin.has_talk()) {
+        out.image(skin.talk, skin::kLogButton, log, dim);
+        if (a.auto_mode) out.image(skin.talk, skin::kAutoOn, autob, {1, 1, 1, 1});
+        else out.image(skin.talk, skin::kAutoOff, autob, dim);
+        return;
+    }
+    outline(out, log, 1.5f, dim);  // plain fallback in the same places
+    if (a.auto_mode) out.rect(autob, {0.3f, 0.8f, 1, 0.9f});
+    outline(out, autob, 1.5f, a.auto_mode ? Color{0.6f, 0.95f, 1, 1} : dim);
+}
+}  // namespace
+
+StoryButton story_button_at(const UiLayout& ui, Vec2 p, bool text_box_visible) {
+    if (!text_box_visible) return StoryButton::None;
+    if (inside(ui.log_hit, p)) return StoryButton::Log;
+    if (inside(ui.auto_hit, p)) return StoryButton::Auto;
+    return StoryButton::None;
+}
+
 std::vector<Rect> choice_rects(const ChoiceOp& choice, const UiLayout& ui, bool text_box_visible) {
     std::vector<Rect> rects;
     const float n = static_cast<float>(choice.options.size());
@@ -212,6 +248,7 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
         tb.ink = kInk;
         tb.shadow = kShadow;
         draw_text(atlas, tv.say->text, tv.shown, tb, out);
+        draw_story_buttons(a, ui, ms, out);
         if (skin.has_next() && player.status() == Status::AwaitAdvance && !player.pending_choice()) {
             const int frame = static_cast<int>(a.clock * skin::kNextFps) % skin::kNextFrames;
             out.image(skin.next, skin::next_frame(frame),

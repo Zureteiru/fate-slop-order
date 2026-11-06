@@ -4,6 +4,7 @@
 //   vnreader [--region NA|JP] [--scripts 0100000010,0100000011]
 //            [--smoke N --screenshot out.bmp]   (hidden window: tap N lines, save a frame, exit)
 //            [--until "text"]   (smoke: keep tapping until a line containing "text" is waiting)
+//            [--log] [--auto]   (smoke: open the LOG screen / turn AUTO on before the capture)
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -86,6 +87,7 @@ int main(int argc, char** argv) {
     const char* screenshot = nullptr;
     std::string until;
     bool matched = false;
+    bool open_log = false, auto_on = false;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--region" && i + 1 < argc) cfg.region = std::strcmp(argv[++i], "JP") == 0 ? Region::JP : Region::NA;
@@ -93,6 +95,8 @@ int main(int argc, char** argv) {
         else if (a == "--smoke" && i + 1 < argc) smoke = std::atoi(argv[++i]);
         else if (a == "--screenshot" && i + 1 < argc) screenshot = argv[++i];
         else if (a == "--until" && i + 1 < argc) until = argv[++i];
+        else if (a == "--log") open_log = true;
+        else if (a == "--auto") auto_on = true;
     }
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
@@ -130,11 +134,13 @@ int main(int argc, char** argv) {
             SDL_Event e;
             while (SDL_PollEvent(&e))
                 if (!sdl::translate_event(e, renderer, input)) running = false;
+            if (app.quit_requested()) running = false;
 
             const Uint64 now = SDL_GetPerformanceCounter();
             double dt = static_cast<double>(now - last) / static_cast<double>(SDL_GetPerformanceFrequency());
             last = now;
             if (dt > 0.1) dt = 0.1;  // window drags / breakpoints: don't jump the script ahead
+            sdl::poll_held(dt, input);
 
             if (smoke >= 0 && app.phase() == rt::App::Phase::Playing && app.player()) {
                 // Smoke test: tap through `smoke` dialogue lines (first choice), then capture one frame.
@@ -157,6 +163,8 @@ int main(int argc, char** argv) {
                     }
                 } else if (taps >= smoke && (p.status() == Status::AwaitAdvance || p.pending_choice())) {
                     running = false;
+                    if (auto_on) input.push_back({rt::InputEvent::Kind::ToggleAuto, {}, 0});
+                    if (open_log) input.push_back({rt::InputEvent::Kind::OpenLog, {}, 0});
                 }
             }
             if (smoke >= 0 && app.phase() == rt::App::Phase::Finished) running = false;

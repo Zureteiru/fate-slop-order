@@ -8,6 +8,7 @@
 
 #include "vnr/player.h"
 #include "vnr/rt/asset_cache.h"
+#include "vnr/rt/backlog.h"
 #include "vnr/rt/draw_list.h"
 #include "vnr/rt/platform.h"
 #include "vnr/rt/scene_render.h"
@@ -17,11 +18,16 @@ namespace vnr::rt {
 
 struct InputEvent {
     enum class Kind {
-        Advance,     // tap / click / Space / Enter / A button
-        Back,        // right click / Backspace / B button
-        Pointer,     // a click at `pos` (stage units): picks a choice, otherwise advances
-        Choose,      // pick choice `index` directly (keyboard 1-9, d-pad + A)
-        ToggleAuto,
+        Advance,      // Space / Enter / A button (closes the log)
+        Back,         // right click / Backspace / B button (closes the log)
+        Pointer,      // press at `pos` (stage units): LOG / AUTO button, a choice, otherwise advances
+        PointerMove,  // the pressed pointer moved to `pos` (drags the log)
+        PointerUp,    // released at `pos` (a tap without a drag closes the log)
+        Scroll,       // scroll the log by `pos.y` stage units (+ newer, - older): wheel, d-pad, stick
+        Choose,       // pick choice `index` directly (keyboard 1-9, d-pad + A)
+        ToggleAuto,   // `A` key / Y button
+        OpenLog,      // `L` key / X button
+        Cancel,       // Esc: closes the log, otherwise asks to quit
         SkipScript,
     };
     Kind kind = Kind::Advance;
@@ -55,6 +61,9 @@ public:
     std::size_t script_index() const { return script_index_; }
     const UiLayout& ui() const { return ui_; }
     bool game_font() const { return font_.game; }
+    const Backlog& backlog() const { return log_; }
+    bool quit_requested() const { return quit_; }
+    bool auto_mode() const { return scene_.auto_mode; }  // as of the last frame drawn
 
 private:
     Platform& platform_;
@@ -72,6 +81,8 @@ private:
     UiLayout ui_;
     SceneAssets scene_;
     DrawList draw_;
+    Backlog log_;
+    bool quit_ = false;
 
     Phase phase_ = Phase::LoadingScripts;
     std::vector<std::string> script_text_;
@@ -87,6 +98,7 @@ private:
     void finish_assets();
     void start_script(std::size_t index);
     void handle(const InputEvent& e);
+    void handle_log(const InputEvent& e);
     void render();
 };
 

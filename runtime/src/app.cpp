@@ -151,14 +151,38 @@ void App::start_script(std::size_t index) {
     if (index >= programs_.size()) {
         phase_ = Phase::Finished;
         player_.reset();
+        log_.close();
         return;
     }
+    const bool carry = player_ != nullptr;  // AUTO keeps its state across the scripts of a part
+    const bool auto_mode = carry && player_->settings().auto_mode;
     player_ = std::make_unique<Player>(programs_[index], config_.settings);
+    if (carry) player_->settings().auto_mode = auto_mode;
     phase_ = Phase::Playing;
+}
+
+void App::handle_log(const InputEvent& e) {
+    switch (e.kind) {
+        case InputEvent::Kind::Pointer: log_.press(e.pos); break;
+        case InputEvent::Kind::PointerMove: log_.drag(e.pos); break;
+        case InputEvent::Kind::PointerUp:
+            if (log_.release(e.pos)) log_.close();
+            break;
+        case InputEvent::Kind::Scroll: log_.scroll_by(e.pos.y); break;
+        case InputEvent::Kind::Advance:
+        case InputEvent::Kind::Back:
+        case InputEvent::Kind::OpenLog:
+        case InputEvent::Kind::Cancel: log_.close(); break;
+        default: break;  // the story is paused under the log
+    }
 }
 
 void App::handle(const InputEvent& e) {
     if (!player_) return;
+    if (log_.is_open()) {
+        handle_log(e);
+        return;
+    }
     switch (e.kind) {
         case InputEvent::Kind::Advance:
             player_->advance();
@@ -169,9 +193,19 @@ void App::handle(const InputEvent& e) {
         case InputEvent::Kind::Choose:
             player_->choose(e.index);
             break;
-        case InputEvent::Kind::Pointer:
+        case InputEvent::Kind::Pointer: {
+            const TextView tv = player_->text();
+            const StoryButton b = story_button_at(ui_, e.pos, tv.visible && tv.say);
+            if (b == StoryButton::Log) {  // buttons take the tap: it does not also advance
+                log_.open(player_->backlog(), atlas_);
+                break;
+            }
+            if (b == StoryButton::Auto) {
+                player_->settings().auto_mode = !player_->settings().auto_mode;
+                break;
+            }
             if (const ChoiceOp* c = player_->pending_choice()) {
-                const auto rects = choice_rects(*c, ui_, player_->text().visible);
+                const auto rects = choice_rects(*c, ui_, tv.visible);
                 for (std::size_t i = 0; i < rects.size(); ++i) {
                     const Rect& r = rects[i];
                     if (e.pos.x >= r.x && e.pos.x <= r.x + r.w && e.pos.y >= r.y && e.pos.y <= r.y + r.h) {
@@ -183,11 +217,22 @@ void App::handle(const InputEvent& e) {
                 player_->advance();
             }
             break;
+        }
         case InputEvent::Kind::ToggleAuto:
             player_->settings().auto_mode = !player_->settings().auto_mode;
             break;
+        case InputEvent::Kind::OpenLog:
+            log_.open(player_->backlog(), atlas_);
+            break;
+        case InputEvent::Kind::Cancel:
+            quit_ = true;
+            break;
         case InputEvent::Kind::SkipScript:
             player_->skip();
+            break;
+        case InputEvent::Kind::PointerMove:
+        case InputEvent::Kind::PointerUp:
+        case InputEvent::Kind::Scroll:
             break;
     }
 }
@@ -195,6 +240,9 @@ void App::handle(const InputEvent& e) {
 void App::update(double dt, const std::vector<InputEvent>& input) {
     scene_.clock += dt;
     cache_.poll();
+    if (phase_ != Phase::Playing)
+        for (const InputEvent& e : input)
+            if (e.kind == InputEvent::Kind::Cancel) quit_ = true;
     switch (phase_) {
         case Phase::LoadingScripts:
             load_scripts();
@@ -204,7 +252,7 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
             break;
         case Phase::Playing:
             for (const InputEvent& e : input) handle(e);
-            player_->update(dt);
+            if (!log_.is_open()) player_->update(dt);  // the log pauses the story (and auto mode)
             for (const AudioEvent& ev : player_->drain_audio()) (void)ev;  // audio: later step
             if (player_->status() == Status::Ended) start_script(script_index_ + 1);
             break;
@@ -217,7 +265,9 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
 void App::render() {
     draw_.clear_all();
     if (phase_ == Phase::Playing && player_) {
+        scene_.auto_mode = player_->settings().auto_mode;
         render_scene(*player_, scene_, atlas_, ui_, draw_);
+        log_.draw(player_->backlog(), atlas_, draw_);
         return;
     }
     // loading / end screen: a status line in the middle of the stage
