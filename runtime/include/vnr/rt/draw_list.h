@@ -1,0 +1,62 @@
+// What to draw each frame, in stage units (1344x626), and the textures it refers to.
+// The wrapper's renderer owns GPU textures; the runtime owns pixels and ids.
+#pragma once
+
+#include <cstdint>
+#include <unordered_map>
+#include <vector>
+
+#include "vnr/assets.h"
+#include "vnr/rt/image.h"
+
+namespace vnr::rt {
+
+using TextureId = std::uint32_t;  // 0 = no texture (solid colour)
+
+struct Color {
+    float r = 1, g = 1, b = 1, a = 1;
+};
+
+struct Quad {
+    TextureId texture = 0;
+    Rect src;         // texture pixels (ignored for solid quads)
+    Vec2 pos[4];      // stage units: top-left, top-right, bottom-right, bottom-left
+    Color color;      // tint / solid colour, alpha = opacity
+};
+
+struct DrawList {
+    std::vector<Quad> quads;
+    Color clear{0, 0, 0, 1};
+
+    void clear_all() { quads.clear(); }
+    void rect(const Rect& dst, Color c);
+    void image(TextureId tex, const Rect& src, const Rect& dst, Color c = {});
+};
+
+// Pixel data and ids for every texture the runtime uses. The renderer takes pending uploads each
+// frame, creates/updates its GPU textures, then calls uploaded() so CPU pixels can be dropped.
+class TextureStore {
+public:
+    TextureId create(Image image, bool keep_pixels = false);
+    void update(TextureId id);  // pixels changed (e.g. glyph atlas): upload again
+    Image* pixels(TextureId id);
+    int width(TextureId id) const;
+    int height(TextureId id) const;
+    void release(TextureId id);
+
+    std::vector<TextureId> take_uploads();
+    std::vector<TextureId> take_releases();
+    void uploaded(TextureId id);  // renderer finished uploading; frees pixels unless kept
+
+private:
+    struct Entry {
+        Image image;
+        int width = 0, height = 0;
+        bool keep = false;
+    };
+    std::unordered_map<TextureId, Entry> entries_;
+    std::vector<TextureId> uploads_, releases_;
+    TextureId next_ = 1;
+};
+
+}  // namespace vnr::rt

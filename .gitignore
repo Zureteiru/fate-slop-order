@@ -1,6 +1,9 @@
 # Downloads (Fate Café bundles, Atlas scripts, videos). Never commit.
 scratch/
 
+# Fetched test fixtures (Atlas scripts), see tests/fetch_fixtures.sh
+.cache/
+
 # Build output
 build*/
 *.bin
