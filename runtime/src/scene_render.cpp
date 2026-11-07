@@ -482,11 +482,7 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
         tb.shadow = kShadow;
         draw_text(atlas, tv.say->text, tv.shown, tb, out);
         draw_story_buttons(a, ui, ms, out);
-        if (skin.has_next() && player.status() == Status::AwaitAdvance && !player.pending_choice()) {
-            const int frame = static_cast<int>(a.clock * skin::kNextFps) % skin::kNextFrames;
-            out.image(skin.next, skin::next_frame(frame),
-                      {ui.next_marker.x + ms.x, ui.next_marker.y + ms.y, ui.next_marker.w, ui.next_marker.h});
-        }
+        // No spinning "next" marker: the user asked for it to be left out.
     }
 
     // choices

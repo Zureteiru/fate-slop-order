@@ -18,7 +18,7 @@ constexpr Rect kNameTab{540, 339, 283, 51};       // blue tab, pointed left end,
 constexpr float kNameTabLeft = 24, kNameTabRight = 56;  // fixed ends when the tab is stretched
 constexpr float kChoiceEdge = 40;                 // fixed ends when the choice frame is stretched
 constexpr Rect kLogButton{2020, 504, 24, 27};     // up arrow, bar, "LOG" (bottom right of the sheet)
-constexpr Rect kAutoOff{1951, 613, 25, 37};       // outlined play box + "AUTO"
+constexpr Rect kAutoOff{1951, 613, 26, 37};       // outlined play box + "AUTO"
 constexpr Rect kAutoOn{2012, 644, 33, 45};        // the same box glowing cyan
 constexpr int kNextFrames = 8;                    // double diamond spinning: 4 x 2 frames of 64 x 128
 constexpr float kNextFrameW = 64, kNextFrameH = 128;

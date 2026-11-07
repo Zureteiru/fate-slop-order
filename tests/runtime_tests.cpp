@@ -227,7 +227,7 @@ TEST(ui_skin_missing_or_wrong_size_falls_back) {
     CHECK(ok.has_next());
 }
 
-TEST(app_skin_draws_text_box_name_tab_and_next_marker) {
+TEST(app_skin_draws_text_box_and_name_tab_without_next_marker) {
     Env env;
     fakes::MemFiles user;
     add_sheets(user);
@@ -252,12 +252,12 @@ TEST(app_skin_draws_text_box_name_tab_and_next_marker) {
                                                   skin::kNameTabRight, skin::kNameTab.h});
     REQUIRE(fade);
     CHECK(fade->pos[1].x >= ui.name_plate.x + ui.name_plate.w - 0.01f);
-    // waiting for a tap: one frame of the spinning "next" marker
+    // waiting for a tap: no spinning "next" marker (left out on request)
     for (int i = 0; i < 100 && app.player()->status() != Status::AwaitAdvance; ++i) app.update(0.1, {});
     REQUIRE(app.player()->status() == Status::AwaitAdvance);
     bool marker = false;
     for (int f = 0; f < skin::kNextFrames; ++f) marker = marker || find_src(app.draw_list(), skin::next_frame(f)) != nullptr;
-    CHECK(marker);
+    CHECK(!marker);
 }
 
 TEST(app_skin_draws_choice_frames) {
