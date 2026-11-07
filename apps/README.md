@@ -31,7 +31,7 @@ A wrapper is small. It must:
 |---|---|---|---|---|---|---|
 | Windows | `apps/desktop` (`os_windows.cpp`) | WinHTTP | `%LOCALAPPDATA%\vnreader\cache` | `%LOCALAPPDATA%\vnreader` | Yu Gothic / Meiryo | **builds and runs** |
 | macOS | `apps/desktop` + `os_posix.cpp` | libcurl (ships with macOS) | `~/Library/Caches/vnreader` | `~/Library/Application Support/vnreader` | Hiragino Sans | later step |
-| Switch | `apps/switch` | libcurl (devkitPro portlib) | `sdmc:/switch/vnreader/cache` | `sdmc:/switch/vnreader` | system shared font (`plGetSharedFont`) | later step; SDL2 and curl are in the `devkitpro/devkita64` image |
+| Switch | `apps/switch` | libcurl (devkitPro portlib) | `sdmc:/switch/vnreader/cache` | `sdmc:/switch/vnreader` | system shared font (Standard, via `pl`) | **builds** (`tools/build_switch.sh`); not yet run on hardware |
 | Android | `apps/android` (Gradle + SDLActivity) | Java `HttpURLConnection` over JNI | app files dir | app external files dir | `/system/fonts` Noto CJK | later step; needs Android Studio (JDK 17 + NDK) |
 
 ## Windows
@@ -86,6 +86,24 @@ vnreader.exe --no-audio   # no sound device (the mixer still runs in real time, 
 | with the popup open: ← → / d-pad ← → | previous / next word |
 | with the popup open: ↑ ↓ / d-pad ↑ ↓, wheel, sticks | previous / next entry |
 | with the popup open: click outside, Space / A, Esc / B | close it (nothing else happens) |
+
+## Switch
+
+Builds `vnreader.nro` in the `devkitpro/devkita64` Docker image (devkitA64, SDL2 2.28 and libcurl from its
+portlibs); nothing to install besides Docker:
+
+```bash
+bash tools/build_switch.sh          # -> build-switch/apps/switch/vnreader.nro
+```
+
+- **Install:** copy `vnreader.nro` to `sdmc:/switch/` and the contents of `userdata/` (ui/, fonts/, sfx/,
+  dict.bin, ... and optionally cache/) to `sdmc:/switch/vnreader/`. Start it from the Homebrew Menu, best via
+  title override (hold R on a game) so it gets the full memory; album launch is applet mode.
+- **What differs from Windows:** HTTPS through devkitPro's curl, whose TLS uses the console's ssl service (system
+  certificates); the download cache is `sdmc:/switch/vnreader/cache`; the fallback font is the system's Standard
+  shared font; it always opens the picker (no command-line options); the log goes to stdout (`nxlink -s`) and
+  `sdmc:/switch/vnreader/vnreader.log`. Fullscreen 1280x720, touch screen and Joy-Con / Pro Controller through
+  SDL (A advance, B back, X log, Y lookup, − auto, L / R save / load, + back / quit).
 
 ## Dictionary
 

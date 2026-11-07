@@ -9,9 +9,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # host    = tests only, gcc/clang with ASan+UBSan (tests/run.sh)
 # desktop = the app for Windows / macOS / Linux (apps/desktop)
-# switch / android come later as thin wrappers over the same runtime.
-set(VNR_TARGET "host" CACHE STRING "host | desktop")
-set_property(CACHE VNR_TARGET PROPERTY STRINGS host desktop)
+# switch  = vnreader.nro for the Homebrew Menu (apps/switch; devkitA64 toolchain, see apps/README.md)
+# android comes later as a thin wrapper over the same runtime.
+set(VNR_TARGET "host" CACHE STRING "host | desktop | switch")
+set_property(CACHE VNR_TARGET PROPERTY STRINGS host desktop switch)
 
 if(VNR_TARGET STREQUAL "host")
     # Non-PIE: gcc 12's ASan hangs before main() in about half the runs of a PIE binary on kernels
@@ -142,4 +143,10 @@ endif()
 if(VNR_TARGET STREQUAL "desktop")
     add_subdirectory(platform/sdl2)
     add_subdirectory(apps/desktop)
+endif()
+
+if(VNR_TARGET STREQUAL "switch")
+    find_package(SDL2 CONFIG REQUIRED)  # devkitPro portlib
+    add_subdirectory(platform/sdl2)
+    add_subdirectory(apps/switch)
 endif()
