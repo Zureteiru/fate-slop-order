@@ -72,6 +72,11 @@ public:
     void skip();             // jump to the end of this script ("Skip scene")
     void voice_finished();   // the app reports the current voice ended
     void movie_finished();   // the app reports the movie ended (or was skipped)
+    // Load a save: fast-forward a fresh Player (muted, no waits) to the stop at `stop_pc` (a dialogue or a choice),
+    // taking `choices` (option indices, in order) at the choices on the way. The line is then shown in full and the
+    // BGM of that point is (re)started. Back and the backlog work as if the reader had read up to there.
+    // Returns false if the stop is not reached; the Player is then unusable and must be recreated.
+    bool resume(std::size_t stop_pc, const std::vector<int>& choices);
 
     Status status() const { return status_; }
     const Stage& stage() const { return stage_; }
@@ -82,6 +87,7 @@ public:
     int line() const { return line_; }           // script line of the last instruction run
     std::size_t pc() const { return pc_; }
     const std::string& bgm() const { return bgm_; }
+    const std::vector<int>& choice_path() const { return choices_; }  // options taken in this script so far
     Settings& settings() { return settings_; }
 
 private:
@@ -90,6 +96,7 @@ private:
         Stage stage;
         std::string bgm;
         std::size_t backlog_size;
+        std::size_t choices_size;
     };
 
     const Program& prog_;
@@ -125,6 +132,7 @@ private:
     std::vector<AudioEvent> audio_;
 
     std::vector<Snapshot> history_;
+    std::vector<int> choices_;
     std::vector<BacklogEntry> backlog_;
 
     void run();

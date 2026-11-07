@@ -99,6 +99,8 @@ int main(int argc, char** argv) {
     bool matched = false;
     bool open_log = false, auto_on = false, no_audio = false, scripts_given = false;
     std::string picker_shot;
+    std::string load_slot, save_screen;  // --load auto|quick|<1-30>, --savescreen save|load
+    bool quick_save = false;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--region" && i + 1 < argc) cfg.region = std::strcmp(argv[++i], "JP") == 0 ? Region::JP : Region::NA;
@@ -112,11 +114,15 @@ int main(int argc, char** argv) {
         else if (a == "--log") open_log = true;
         else if (a == "--auto") auto_on = true;
         else if (a == "--no-audio") no_audio = true;
+        else if (a == "--load" && i + 1 < argc) load_slot = argv[++i];
+        else if (a == "--savescreen" && i + 1 < argc) save_screen = argv[++i];
+        else if (a == "--quicksave") quick_save = true;
     }
 
     // The picker unless a part was given on the command line (--scripts) or a story smoke run asked for
     // the default part (--smoke without --scripts plays Fuyuki part 1, as before the picker existed).
-    cfg.picker = !picker_shot.empty() || (!scripts_given && smoke < 0);
+    // --load without --scripts loads from the reader's saves, which need the picker's catalogue.
+    cfg.picker = !picker_shot.empty() || (!scripts_given && (smoke < 0 || !load_slot.empty()));
     cfg.picker_screen = picker_shot;
     const bool hidden = smoke >= 0 || !picker_shot.empty();
 
@@ -160,6 +166,7 @@ int main(int argc, char** argv) {
         int taps = 0;
         double smoke_clock = 0;
         bool running = true;
+        bool loaded = load_slot.empty();
         while (running) {
             std::vector<rt::InputEvent> input;
             SDL_Event e;
@@ -173,7 +180,17 @@ int main(int argc, char** argv) {
             if (dt > 0.1) dt = 0.1;  // window drags / breakpoints: don't jump the script ahead
             sdl::poll_held(dt, input);
 
-            if (smoke >= 0 && app.phase() == rt::App::Phase::Playing && app.player()) {
+            if (!loaded && ((app.phase() == rt::App::Phase::Picker && app.picker() && app.picker()->catalogue()) ||
+                            (!cfg.picker && app.phase() == rt::App::Phase::Playing))) {
+                // --load: once the catalogue is in (picker) or the --scripts part is playing
+                loaded = true;
+                const int slot = load_slot == "auto" ? rt::kAutosaveSlot : load_slot == "quick" ? rt::kQuickSlot : std::atoi(load_slot.c_str()) - 1;
+                if (!app.load_save(slot)) {
+                    std::fprintf(stderr, "[vnreader] --load %s: no such save\n", load_slot.c_str());
+                    running = false;
+                }
+            }
+            if (smoke >= 0 && loaded && app.phase() == rt::App::Phase::Playing && app.player()) {
                 // Smoke test: tap through `smoke` dialogue lines (first choice), then capture one frame.
                 const Player& p = *app.player();
                 smoke_clock += dt;
@@ -205,6 +222,9 @@ int main(int argc, char** argv) {
                     running = false;
                     if (auto_on) input.push_back({rt::InputEvent::Kind::ToggleAuto, {}, 0});
                     if (open_log) input.push_back({rt::InputEvent::Kind::OpenLog, {}, 0});
+                    if (quick_save) input.push_back({rt::InputEvent::Kind::QuickSave, {}, 0});
+                    if (save_screen == "save") input.push_back({rt::InputEvent::Kind::OpenSave, {}, 0});
+                    if (save_screen == "load") input.push_back({rt::InputEvent::Kind::OpenLoad, {}, 0});
                 }
             }
             if (smoke >= 0 && app.phase() == rt::App::Phase::Finished) running = false;

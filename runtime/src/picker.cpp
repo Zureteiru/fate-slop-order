@@ -243,6 +243,7 @@ void Picker::build() {
             }
             const float bw = std::min(W, width_of(label + kArrowSuffix, 17) + 56);
             items_.push_back({Target::Start, start_chapter, {L, 88, bw, 42}, true, label});
+            items_.push_back({Target::Load, 0, {L + bw + 16, 88, width_of("Load", 17) + 48, 42}, true, "Load"});
             y = 160;
             const float card_w = (W - lay_.card_gap * static_cast<float>(lay_.columns - 1)) / static_cast<float>(lay_.columns);
             const float card_h = card_w * lay_.banner_aspect + lay_.card_text_height;
@@ -348,11 +349,16 @@ Picker::Action Picker::activate(std::size_t i) {
         case Target::Start:
             if (screen_ == Screen::Home) {
                 const CatalogueChapter* last = cat_->chapter(progress_.last_chapter);
-                if (last && it.index == *cat_->chapter_index(last->id)) return play(it.index, progress_.last_section);
+                if (last && it.index == *cat_->chapter_index(last->id)) {
+                    Action a = play(it.index, progress_.last_section);
+                    a.resume = true;
+                    return a;
+                }
                 if (const auto s = next_unread(cat_->chapters[it.index], progress_)) return play(it.index, *s);
                 break;
             }
             return play(chapter_, it.index);
+        case Target::Load: return {Action::Kind::OpenLoad, {}, false};
         case Target::Chapter:
             chapter_ = it.index;
             go(Screen::Chapter);
@@ -384,6 +390,15 @@ void Picker::part_finished(const PartChoice& part) {
     }
     section_ = part.section;
     go(cat_ ? Screen::End : Screen::Home);
+}
+
+void Picker::opened(const PartChoice& part) {
+    if (cat_) {
+        if (const auto c = cat_->chapter_index(part.chapter_id)) chapter_ = *c;
+    }
+    section_ = part.section;
+    progress_.opened(part.chapter_id, part.section);
+    save_progress();
 }
 
 void Picker::part_left(const PartChoice& part) {
@@ -489,6 +504,13 @@ void Picker::draw_home(DrawList& out) {
         if (it.target == Target::Start) {
             out.rect(r, kGold);
             text(out, it.label + kArrowSuffix, r.x + 28, r.y + 27, 17, kInk, r.w - 40);
+        } else if (it.target == Target::Load) {
+            out.rect(r, focus == i ? kFocusFill : kPanel);
+            out.rect({r.x, r.y, r.w, 1.5f}, kGold);
+            out.rect({r.x, r.y + r.h - 1.5f, r.w, 1.5f}, kGold);
+            out.rect({r.x, r.y, 1.5f, r.h}, kGold);
+            out.rect({r.x + r.w - 1.5f, r.y, 1.5f, r.h}, kGold);
+            text(out, it.label, r.x + 24, r.y + 27, 17, kCream, r.w - 30);
         } else {
             const CatalogueChapter& ch = cat_->chapters[it.index];
             const float bh = r.w * lay_.banner_aspect;
@@ -501,7 +523,7 @@ void Picker::draw_home(DrawList& out) {
         if (focus == i) draw_focus(out, r);
     }
     // arc headers: "Arc 1 ——— 10 chapters", 56 above each arc's first card
-    std::size_t item = 2;
+    std::size_t item = 3;  // after Region, Start and Load
     for (const CatalogueArc& arc : cat_->arcs) {
         if (item >= items_.size()) break;
         const float top = items_[item].rect.y - 56;

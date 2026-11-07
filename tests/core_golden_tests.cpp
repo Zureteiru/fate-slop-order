@@ -132,3 +132,22 @@ TEST(golden_jp_ruby_line106) {
     }
     CHECK(found);
 }
+
+TEST(golden_fuyuki_resume_matches_playing_there) {
+    Script s("NA_0100000011.txt");
+    Player played(s.prog);
+    REQUIRE(drive::until(played, [&] { return drive::at_say(played, 522); }));
+    played.advance();  // finish typing, as a save would be taken from a line read in full
+    Player loaded(s.prog);
+    REQUIRE(loaded.resume(played.pc(), played.choice_path()));
+    CHECK(drive::at_say(loaded, 522));
+    CHECK_EQ(loaded.stage().background, played.stage().background);
+    CHECK_EQ(loaded.bgm(), played.bgm());
+    CHECK_EQ(loaded.backlog().size(), played.backlog().size());
+    const Element* mash = el(loaded, "A");
+    const Element* lev = el(loaded, "D");
+    REQUIRE(mash && lev);
+    CHECK(mash->pos.value() == (Vec2{256, 0}));
+    CHECK(lev->pos.value() == (Vec2{-256, 0}));
+    CHECK(mash->dimmed);
+}

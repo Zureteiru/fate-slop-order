@@ -227,6 +227,11 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
                 case SDLK_PLUS:
                 case SDLK_KP_PLUS: out.push_back({InputEvent::Kind::VolumeUp, {}, 0}); break;
                 case SDLK_m: out.push_back({InputEvent::Kind::Mute, {}, 0}); break;
+                case SDLK_F2: out.push_back({InputEvent::Kind::OpenSave, {}, 0}); break;
+                case SDLK_F3: out.push_back({InputEvent::Kind::OpenLoad, {}, 0}); break;
+                case SDLK_F5: out.push_back({InputEvent::Kind::QuickSave, {}, 0}); break;
+                case SDLK_F9: out.push_back({InputEvent::Kind::QuickLoad, {}, 0}); break;
+                case SDLK_DELETE: out.push_back({InputEvent::Kind::DeleteSave, {}, 0}); break;
                 default:
                     if (e.key.keysym.sym >= SDLK_1 && e.key.keysym.sym <= SDLK_9)
                         out.push_back({InputEvent::Kind::Choose, {}, static_cast<std::size_t>(e.key.keysym.sym - SDLK_1)});
@@ -238,6 +243,8 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
                 case SDL_CONTROLLER_BUTTON_B: out.push_back({InputEvent::Kind::Back, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_Y: out.push_back({InputEvent::Kind::ToggleAuto, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_X: out.push_back({InputEvent::Kind::OpenLog, {}, 0}); break;
+                case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: out.push_back({InputEvent::Kind::OpenSave, {}, 0}); break;
+                case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: out.push_back({InputEvent::Kind::OpenLoad, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_DPAD_UP: out.push_back(nav(NavDir::Up)); break;
                 case SDL_CONTROLLER_BUTTON_DPAD_DOWN: out.push_back(nav(NavDir::Down)); break;
                 case SDL_CONTROLLER_BUTTON_DPAD_LEFT: out.push_back(nav(NavDir::Left)); break;

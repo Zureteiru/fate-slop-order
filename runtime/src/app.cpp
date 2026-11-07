@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <ctime>
 #include <set>
 
 #include "vnr/rt/json.h"
@@ -49,9 +50,14 @@ App::App(Platform& platform, AppConfig config)
         if (platform_.user->read(kChoiceSoundKey, click) && !click.empty())
             choice_sound_ = std::make_shared<const std::vector<std::uint8_t>>(std::move(click));
     }
+    std::vector<std::uint8_t> saves;
+    Files* sf = platform_.user ? platform_.user : &platform_.files;
+    if (sf->read(config_.picker ? kSavesKey : kScriptSavesKey, saves)) saves_ = parse_saves(std::string(saves.begin(), saves.end()));
 }
 
-App::~App() = default;
+App::~App() {
+    if (autosave_dirty_) write_saves();  // quitting: keep the line being read
+}
 
 std::string App::status() const {
     switch (phase_) {
@@ -68,7 +74,11 @@ std::string App::status() const {
     return {};
 }
 
-void App::start_part(const PartChoice& part) {
+void App::start_part(const PartChoice& part, std::optional<SaveEntry> resume) {
+    if (autosave_dirty_) write_saves();
+    pending_resume_ = std::move(resume);
+    save_screen_.close();
+    stop_script_ = stop_pc_ = SIZE_MAX;
     part_ = part;
     scene_.titles = {part.chapter_label, part.chapter_title, part.section_label, part.section_title};
     config_.region = part.region;
@@ -94,6 +104,12 @@ void App::start_part(const PartChoice& part) {
 
 // Back to the picker: the end card after the last script, or the chapter page when the reader left early.
 void App::leave_part(bool finished) {
+    if (finished) {  // read to the end: nothing to resume in this part
+        saves_.autosave.reset();
+        autosave_dirty_ = true;
+    }
+    if (autosave_dirty_) write_saves();
+    save_screen_.close();
     player_.reset();
     log_.close();
     audio_.stop_all(1.0);
@@ -239,7 +255,33 @@ void App::finish_assets() {
         }
     }
     for (const Program& p : programs_) audio_.prefetch(p);  // in the background, in script order
-    start_script(0);
+    if (!pending_resume_) {
+        start_script(0);
+        return;
+    }
+    const SaveEntry e = std::move(*pending_resume_);
+    pending_resume_.reset();
+    std::size_t first = e.script_index;
+    if (first >= config_.script_ids.size() || config_.script_ids[first] != e.script_id) {
+        const auto it = std::find(config_.script_ids.begin(), config_.script_ids.end(), e.script_id);
+        first = it == config_.script_ids.end() ? SIZE_MAX : static_cast<std::size_t>(it - config_.script_ids.begin());
+    }
+    if (first == SIZE_MAX) {
+        platform_.log.write("load: script " + e.script_id + " is no longer in this part; starting from its top");
+        start_script(0);
+        return;
+    }
+    start_script(first);
+    if (!player_) return;
+    const auto rp = resume_point(e, programs_[first], fnv1a(script_text_[first]));
+    if (rp && rp->stop_pc != e.stop_pc)
+        platform_.log.write("load: script " + e.script_id + " changed; resuming at line " + std::to_string(e.line));
+    if (!rp || !player_->resume(rp->stop_pc, rp->choices)) {
+        platform_.log.write("load: line " + std::to_string(e.line) + " of " + e.script_id +
+                            " not found; starting that script from its top");
+        player_ = std::make_unique<Player>(programs_[first], config_.settings);
+    }
+    player_->settings().auto_mode = e.auto_mode;
 }
 
 void App::start_script(std::size_t index) {
@@ -275,6 +317,11 @@ void App::handle_log(const InputEvent& e) {
         case InputEvent::Kind::Back:
         case InputEvent::Kind::OpenLog:
         case InputEvent::Kind::Cancel: log_.close(); break;
+        case InputEvent::Kind::OpenSave:
+        case InputEvent::Kind::OpenLoad:
+            log_.close();
+            open_save_screen(e.kind == InputEvent::Kind::OpenSave ? SaveScreen::Mode::Save : SaveScreen::Mode::Load);
+            break;
         default: break;  // the story is paused under the log
     }
 }
@@ -321,6 +368,10 @@ void App::handle(const InputEvent& e) {
                 player_->settings().auto_mode = !player_->settings().auto_mode;
                 break;
             }
+            if (b == StoryButton::Save || b == StoryButton::Load) {
+                open_save_screen(b == StoryButton::Save ? SaveScreen::Mode::Save : SaveScreen::Mode::Load);
+                break;
+            }
             if (const ChoiceOp* c = player_->pending_choice()) {
                 const auto rects = choice_rects(*c, ui_, tv.visible);
                 for (std::size_t i = 0; i < rects.size(); ++i) {
@@ -348,6 +399,14 @@ void App::handle(const InputEvent& e) {
         case InputEvent::Kind::SkipScript:
             player_->skip();
             break;
+        case InputEvent::Kind::OpenSave: open_save_screen(SaveScreen::Mode::Save); break;
+        case InputEvent::Kind::OpenLoad: open_save_screen(SaveScreen::Mode::Load); break;
+        case InputEvent::Kind::QuickSave:
+            if (!save_to(kQuickSlot)) toast("Nothing to save yet");
+            break;
+        case InputEvent::Kind::QuickLoad:
+            if (!load_save(kQuickSlot)) toast("No quick save");
+            break;
         case InputEvent::Kind::Nav:
         case InputEvent::Kind::PointerMove:
         case InputEvent::Kind::PointerUp:
@@ -355,8 +414,157 @@ void App::handle(const InputEvent& e) {
         case InputEvent::Kind::VolumeDown:
         case InputEvent::Kind::VolumeUp:
         case InputEvent::Kind::Mute:
+        case InputEvent::Kind::DeleteSave:
             break;
     }
+}
+
+// ---- saves
+
+std::optional<SaveEntry>& App::slot_ref(int slot) {
+    static std::optional<SaveEntry> none;
+    if (slot == kAutosaveSlot) return saves_.autosave;
+    if (slot == kQuickSlot) return saves_.quick;
+    if (slot >= 0 && static_cast<std::size_t>(slot) < kSaveSlots) return saves_.slots[static_cast<std::size_t>(slot)];
+    none.reset();
+    return none;
+}
+
+std::optional<SaveEntry> App::capture() const {
+    if (phase_ != Phase::Playing || !player_ || script_index_ >= config_.script_ids.size()) return std::nullopt;
+    const Status st = player_->status();
+    if (st != Status::Typing && st != Status::AwaitAdvance && st != Status::AwaitChoice) {
+        // between lines (a wait): the last line reached, which the autosave holds
+        if (stop_script_ == SIZE_MAX) return std::nullopt;
+        return saves_.autosave;
+    }
+    SaveEntry e;
+    e.chapter_id = part_.chapter_id.empty() ? "scripts" : part_.chapter_id;  // --scripts runs have no chapter
+    e.section = part_.section;
+    e.region = config_.region;
+    e.chapter_label = part_.chapter_label;
+    e.part_label = part_.label;
+    e.script_index = script_index_;
+    e.script_id = config_.script_ids[script_index_];
+    e.script_hash = script_index_ < script_text_.size() ? fnv1a(script_text_[script_index_]) : 0;
+    e.stop_pc = player_->pc();
+    e.choices = player_->choice_path();
+    e.line = player_->line();
+    if (const ChoiceOp* c = player_->pending_choice()) {
+        std::string opts;
+        for (const ChoiceOption& o : c->options) opts += (opts.empty() ? "" : " / ") + o.text.plain();
+        e.text = preview_text(opts);
+    } else if (const SayOp* say = player_->text().say) {
+        e.line = say->line;
+        e.speaker = preview_text(say->speaker.plain(), 20);
+        e.text = preview_text(say->text.plain());
+    }
+    e.background = player_->stage().background;
+    e.auto_mode = player_->settings().auto_mode;
+    e.saved_at = static_cast<std::int64_t>(std::time(nullptr));
+    return e;
+}
+
+bool App::save_to(int slot) {
+    if (slot == kAutosaveSlot) return false;
+    auto e = capture();
+    if (!e) return false;
+    e->saved_at = static_cast<std::int64_t>(std::time(nullptr));
+    slot_ref(slot) = std::move(e);
+    write_saves();
+    toast(slot == kQuickSlot ? "Quick saved" : "Saved");
+    return true;
+}
+
+bool App::load_save(int slot) {
+    const std::optional<SaveEntry> e = slot_ref(slot);  // a copy: start_part may rewrite the autosave
+    if (!e) return false;
+    std::optional<PartChoice> part;
+    if (picker_ && picker_->catalogue()) {
+        part = part_for(*picker_->catalogue(), e->chapter_id, e->section, e->region);
+    } else if (!picker_ && e->chapter_id == "scripts") {
+        PartChoice p;
+        p.region = e->region;
+        p.script_ids = config_.script_ids;
+        part = p;
+    }
+    if (!part) {
+        platform_.log.write("load: " + e->chapter_id + " #" + std::to_string(e->section) + " is not in the catalogue");
+        return false;
+    }
+    if (picker_) picker_->opened(*part);
+    platform_.log.write("load: " + e->script_id + " line " + std::to_string(e->line));
+    start_part(*part, e);
+    return true;
+}
+
+void App::write_saves() {
+    const std::string s = serialize_saves(saves_);
+    Files* f = platform_.user ? platform_.user : &platform_.files;
+    const char* key = config_.picker ? kSavesKey : kScriptSavesKey;
+    if (!f->write(key, {s.begin(), s.end()})) platform_.log.write(std::string("could not save ") + key);
+    autosave_dirty_ = false;
+}
+
+// The autosave follows the reader: every new line or choice replaces it in memory; the file is written at most
+// every kAutosaveInterval seconds (and when a part is left or started, and when the app quits).
+void App::track_autosave(double dt) {
+    toast_left_ = std::max(0.0, toast_left_ - dt);
+    autosave_wait_ = std::max(0.0, autosave_wait_ - dt);
+    if (phase_ == Phase::Playing && player_) {
+        const Status st = player_->status();
+        const bool at_stop = st == Status::Typing || st == Status::AwaitAdvance || st == Status::AwaitChoice;
+        if (at_stop && (script_index_ != stop_script_ || player_->pc() != stop_pc_)) {
+            stop_script_ = script_index_;
+            stop_pc_ = player_->pc();
+            saves_.autosave = capture();
+            autosave_dirty_ = true;
+        }
+    }
+    if (autosave_dirty_ && autosave_wait_ <= 0) {
+        write_saves();
+        autosave_wait_ = kAutosaveInterval;
+    }
+}
+
+void App::open_save_screen(SaveScreen::Mode mode) {
+    if (mode == SaveScreen::Mode::Save && !capture()) {
+        toast("Nothing to save yet");
+        return;
+    }
+    auto request = [&](const std::optional<SaveEntry>& e) {
+        if (e && !e->background.empty()) cache_.request_texture(background_url(e->background, e->region));
+    };
+    request(saves_.autosave);
+    request(saves_.quick);
+    for (const auto& e : saves_.slots) request(e);
+    save_screen_.open(mode, saves_, phase_ == Phase::Playing);
+}
+
+void App::handle_save_screen(const InputEvent& e) {
+    const SaveScreen::Action a = save_screen_.handle(e, saves_);
+    switch (a.kind) {
+        case SaveScreen::Action::Kind::None: break;
+        case SaveScreen::Action::Kind::Close: save_screen_.close(); break;
+        case SaveScreen::Action::Kind::Save:
+            save_to(a.slot);
+            save_screen_.refresh(saves_);
+            break;
+        case SaveScreen::Action::Kind::Load:
+            if (!load_save(a.slot)) toast("That part is not available");
+            break;
+        case SaveScreen::Action::Kind::Delete:
+            slot_ref(a.slot).reset();
+            if (a.slot == kAutosaveSlot) stop_script_ = stop_pc_ = SIZE_MAX;
+            write_saves();
+            save_screen_.refresh(saves_);
+            break;
+    }
+}
+
+void App::toast(std::string text) {
+    toast_ = std::move(text);
+    toast_left_ = 1.6;
 }
 
 void App::handle_volume(const InputEvent& e) {
@@ -413,13 +621,27 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
                 config_.picker_screen.clear();
             }
             for (const InputEvent& e : input) {
+                if (save_screen_.is_open()) {
+                    handle_save_screen(e);
+                    if (phase_ != Phase::Picker) break;  // a save was loaded
+                    continue;
+                }
+                if (e.kind == InputEvent::Kind::OpenLoad && picker_->catalogue()) {
+                    open_save_screen(SaveScreen::Mode::Load);
+                    continue;
+                }
                 const Picker::Action a = picker_->handle(e);
                 if (a.kind == Picker::Action::Kind::Quit) quit_ = true;
+                if (a.kind == Picker::Action::Kind::OpenLoad) open_save_screen(SaveScreen::Mode::Load);
                 if (a.kind == Picker::Action::Kind::Play) {
-                    start_part(a.part);
+                    const auto& as = saves_.autosave;
+                    const bool resume = a.resume && as && as->chapter_id == a.part.chapter_id &&
+                                        as->section == a.part.section && as->region == a.part.region;
+                    start_part(a.part, resume ? as : std::nullopt);
                     break;
                 }
             }
+            track_autosave(dt);
             break;
         }
         case Phase::LoadingScripts:
@@ -429,11 +651,17 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
             if (cache_.pending() == 0) finish_assets();
             break;
         case Phase::Playing:
-            for (const InputEvent& e : input) handle(e);
-            if (phase_ != Phase::Playing) break;  // the reader left the part (Esc / Start)
-            if (!log_.is_open()) player_->update(dt);  // the log pauses the story (and auto mode), not the sound
+            for (const InputEvent& e : input) {
+                if (save_screen_.is_open()) handle_save_screen(e);
+                else handle(e);
+                if (phase_ != Phase::Playing) break;  // the reader left the part (Esc / Start) or loaded a save
+            }
+            if (phase_ != Phase::Playing) break;
+            // the log and the save screen pause the story (and auto mode), not the sound
+            if (!log_.is_open() && !save_screen_.is_open()) player_->update(dt);
             play_audio_events();
             if (player_->status() == Status::Ended) start_script(script_index_ + 1);
+            track_autosave(dt);
             break;
         case Phase::Finished:
             break;
@@ -446,6 +674,7 @@ void App::render() {
     draw_.clear = {0, 0, 0, 1};
     if (phase_ == Phase::Picker && picker_) {
         picker_->draw(draw_, &backdrop_);
+        save_screen_.draw(saves_, cache_, atlas_, draw_);
         return;
     }
     if (phase_ == Phase::Playing && player_) {
@@ -461,6 +690,19 @@ void App::render() {
         scene_.picture_frame_opacity = static_cast<float>(std::clamp((scene_.clock - frame_start_) / 0.2, 0.0, 1.0));
         render_scene(*player_, scene_, atlas_, ui_, draw_);
         log_.draw(player_->backlog(), atlas_, draw_);
+        save_screen_.draw(saves_, cache_, atlas_, draw_);
+        if (toast_left_ > 0 && !toast_.empty()) {
+            const RichText msg = parse_rich_text(toast_, {});
+            TextStyleBox box;
+            box.px = 20;
+            box.max_lines = 1;
+            box.first_line = 0;
+            box.ink = {1, 1, 1, static_cast<float>(std::min(1.0, toast_left_ / 0.3))};
+            const float w = text_width(atlas_, msg, box.px);
+            box.box = {kStageWidth - 190.f - w, 18, w + 4, 30};
+            draw_.rect({box.box.x - 14, 12, w + 32, 40}, {0, 0, 0, 0.6f * box.ink.a});
+            draw_text(atlas_, msg, msg.glyph_count, box, draw_);
+        }
         return;
     }
     // loading / end screen: a status line in the middle of the stage

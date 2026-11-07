@@ -2,7 +2,9 @@
 // the DrawList it returns and uploads the textures it lists.
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -16,6 +18,8 @@
 #include "vnr/rt/focus_nav.h"
 #include "vnr/rt/wipe_mask.h"
 #include "vnr/rt/platform.h"
+#include "vnr/rt/save_screen.h"
+#include "vnr/rt/saves.h"
 #include "vnr/rt/scene_render.h"
 #include "vnr/rt/text.h"
 
@@ -39,6 +43,11 @@ struct InputEvent {
         VolumeDown,   // `-` key: master volume -10%
         VolumeUp,     // `=` key: master volume +10%
         Mute,         // `M` key
+        OpenSave,     // F2 / L shoulder / SAVE button: the Save screen (switches mode when it is open)
+        OpenLoad,     // F3 / R shoulder / LOAD button: the Load screen (also from the picker)
+        QuickSave,    // F5
+        QuickLoad,    // F9
+        DeleteSave,   // Delete: the focused save on the Save / Load screen (X also does it there)
     };
     Kind kind = Kind::Advance;
     Vec2 pos;
@@ -93,8 +102,17 @@ public:
     // The chapter picker, when the App was started with one (null otherwise).
     const Picker* picker() const { return picker_.get(); }
     const AppConfig& config() const { return config_; }  // region and scripts of the current part
-    // Plays a part now (the picker does this; tests too).
-    void start_part(const PartChoice& part);
+    // Plays a part now (the picker does this; tests too). With `resume`, starts at that save's line.
+    void start_part(const PartChoice& part, std::optional<SaveEntry> resume = std::nullopt);
+
+    // Saves (<user folder>/saves/fgo.json). `slot` is kAutosaveSlot, kQuickSlot or 0..kSaveSlots-1.
+    const SaveFile& saves() const { return saves_; }
+    const SaveScreen& save_screen() const { return save_screen_; }
+    bool save_to(int slot);    // the line being read (false when nothing is being read yet)
+    bool load_save(int slot);  // switches part when needed (false when the slot is empty or its part is gone)
+    std::optional<SaveEntry> capture() const;  // the current stop as a save (nullopt before the first line)
+    // Autosaves are written at most this often (and always when leaving a part or quitting).
+    static constexpr double kAutosaveInterval = 5;
 
 private:
     Platform& platform_;
@@ -132,6 +150,15 @@ private:
     std::vector<std::string> mask_names_;  // subCameraFilter masks of the part
     std::size_t assets_total_ = 0;
 
+    SaveFile saves_;
+    SaveScreen save_screen_;
+    std::optional<SaveEntry> pending_resume_;  // applied when the part's first script starts
+    std::size_t stop_script_ = SIZE_MAX, stop_pc_ = SIZE_MAX;  // the last stop seen (autosave tracking)
+    bool autosave_dirty_ = false;
+    double autosave_wait_ = 0;
+    std::string toast_;  // "Saved" etc., shown briefly over the story
+    double toast_left_ = 0;
+
     std::string base_figure_url(int figure_id) const;
     void leave_part(bool finished);
     void load_scripts();
@@ -145,6 +172,12 @@ private:
     void play_audio_events();
     void choose(std::size_t index);
     void render();
+    void track_autosave(double dt);
+    void write_saves();
+    void open_save_screen(SaveScreen::Mode mode);
+    void handle_save_screen(const InputEvent& e);
+    void toast(std::string text);
+    std::optional<SaveEntry>& slot_ref(int slot);
 };
 
 }  // namespace vnr::rt

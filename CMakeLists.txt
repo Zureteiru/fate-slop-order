@@ -56,6 +56,8 @@ add_library(vnr_runtime STATIC
     runtime/src/wipe_mask.cpp
     runtime/src/backlog.cpp
     runtime/src/catalogue.cpp
+    runtime/src/saves.cpp
+    runtime/src/save_screen.cpp
     runtime/src/focus_nav.cpp
     runtime/src/picker.cpp
     runtime/src/scene_render.cpp

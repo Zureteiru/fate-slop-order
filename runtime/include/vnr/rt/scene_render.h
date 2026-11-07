@@ -68,9 +68,14 @@ struct UiLayout {
     float button_opacity = 0.62f;               // LOG and AUTO off are see-through white; AUTO on is opaque
     Rect log_hit{1108, 425, 62, 40};            // tap areas: the top and bottom of the box's right edge
     Rect auto_hit{1108, 465, 62, 64};
+    // SAVE / LOAD (no game art: the game has no save screen): text plates above the box's top right,
+    // white and see-through like LOG. Hit areas are the plates plus a few px.
+    Rect save_button{1022, 393, 64, 26};
+    Rect load_button{1094, 393, 64, 26};
+    float save_label_px = 15;
 };
 
-enum class StoryButton { None, Log, Auto };
+enum class StoryButton { None, Log, Auto, Save, Load };
 
 // Which story button (if any) a tap at `p` (stage units) hits. Buttons exist only while the text box shows.
 StoryButton story_button_at(const UiLayout& ui, Vec2 p, bool text_box_visible);

@@ -33,8 +33,9 @@ class Picker {
 public:
     enum class Screen { Home, Chapter, End };
     struct Action {
-        enum class Kind { None, Play, Quit } kind = Kind::None;
+        enum class Kind { None, Play, Quit, OpenLoad } kind = Kind::None;
         PartChoice part;
+        bool resume = false;  // Play from the home's Continue: resume the autosave when it is in this part
     };
 
     Picker(Platform& platform, AssetCache& cache, GlyphAtlas& atlas);
@@ -48,6 +49,8 @@ public:
     // The App finished the part (the end card shows) or left it early (back to its chapter page).
     void part_finished(const PartChoice& part);
     void part_left(const PartChoice& part);
+    // The App opened a part itself (a save was loaded): remember it as the last part, like play() does.
+    void opened(const PartChoice& part);
 
     // `backdrop` is the story's last frame, drawn dimmed under the end card (may be null).
     void draw(DrawList& out, const DrawList* backdrop);
@@ -67,7 +70,7 @@ public:
     std::size_t item_count() const { return items_.size(); }
 
 private:
-    enum class Target { Region, Start, Chapter, BackLink, Section, Continue, BackToIndex, Retry };
+    enum class Target { Region, Start, Load, Chapter, BackLink, Section, Continue, BackToIndex, Retry };
     struct Item {
         Target target;
         std::size_t index = 0;   // chapter or section index

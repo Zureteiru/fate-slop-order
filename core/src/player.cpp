@@ -122,7 +122,7 @@ void Player::run() {
         } else if (const auto* say = std::get_if<SayOp>(&in)) {
             begin_say(*say);
         } else if (std::get_if<ChoiceOp>(&in)) {
-            history_.push_back({pc_, stage_, bgm_, backlog_.size()});
+            history_.push_back({pc_, stage_, bgm_, backlog_.size(), choices_.size()});
             unclaimed_voice_.clear();
             status_ = Status::AwaitChoice;
         } else if (const auto* j = std::get_if<JumpOp>(&in)) {
@@ -182,7 +182,7 @@ void Player::start_wait(double seconds, WaitCat cat) {
 }
 
 void Player::begin_say(const SayOp& op) {
-    history_.push_back({pc_, stage_, bgm_, backlog_.size()});
+    history_.push_back({pc_, stage_, bgm_, backlog_.size(), choices_.size()});
     say_ = &op;
     reveal_ = reveal_times(op.text, settings_.cps);
     typed_ = 0;
@@ -275,9 +275,54 @@ bool Player::advance() {
 bool Player::choose(std::size_t index) {
     const ChoiceOp* c = pending_choice();
     if (!c || index >= c->options.size()) return false;
+    choices_.push_back(static_cast<int>(index));
     pc_ = c->options[index].target;
     status_ = Status::Running;
     run();
+    return true;
+}
+
+bool Player::resume(std::size_t stop_pc, const std::vector<int>& choices) {
+    audio_.clear();  // what the constructor queued is replaced by the state at the stop
+    mute_events_ = true;
+    std::size_t taken = 0;
+    bool reached = false;
+    for (std::size_t steps = 0; steps < 1000000; ++steps) {
+        voice_active_ = false;  // muted: nothing is actually playing
+        const bool at_target = pc_ == stop_pc && taken == choices.size();
+        if (status_ == Status::Typing || status_ == Status::AwaitAdvance) {
+            if (status_ == Status::Typing) {
+                finish_typing(true);
+                status_ = Status::AwaitAdvance;
+            }
+            if (at_target) {
+                reached = true;
+                break;
+            }
+            advance();
+        } else if (status_ == Status::AwaitChoice) {
+            if (at_target) {
+                reached = true;
+                break;
+            }
+            if (taken >= choices.size() || choices[taken] < 0 || !choose(static_cast<std::size_t>(choices[taken]))) break;
+            ++taken;
+        } else if (status_ == Status::Waiting) {
+            stage_.finish_all();
+            waiting_movie_ = false;
+            status_ = Status::Running;
+            run();
+        } else {
+            break;  // Ended (or Running, which run() never leaves)
+        }
+    }
+    voice_active_ = false;
+    mute_events_ = false;
+    if (!reached) return false;
+    stage_.finish_all();
+    unclaimed_voice_.clear();
+    auto_timer_ = 0;
+    if (!bgm_.empty()) emit({AudioEvent::Kind::BgmPlay, bgm_, {}, 0, 1, true});
     return true;
 }
 
@@ -301,6 +346,7 @@ bool Player::back() {
     pc_ = snap.pc;
     bgm_ = snap.bgm;
     backlog_.resize(snap.backlog_size);
+    choices_.resize(snap.choices_size);
     waiting_movie_ = false;
 
     mute_events_ = true;

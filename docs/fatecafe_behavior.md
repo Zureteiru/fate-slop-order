@@ -37,6 +37,10 @@ The user's exceptions, which override the rest of the spec:
    from 1080p gameplay video; see apps/README.md), not Fate Café's layout.
 7. **No SKIP button** on the story screen.
 8. **No spinning "next" marker** (advance hint) on the story screen (user, 2026-11-07).
+9. **Save / Load anytime (user, 2026-11-07):** an autosave of the exact line being read (Fate Café's
+   `fgo-reader:last-scene:v1` keeps only chapter, section and line for its home button), a quick save, and 30 save
+   slots on 3 pages, opened by SAVE / LOAD buttons above LOG / AUTO, keys and controller, and from the picker home.
+   The game and Fate Café have no save screen. See apps/README.md "Save / Load".
 
 ## Reference chapters
 

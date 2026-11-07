@@ -30,7 +30,8 @@ Status (2026-11-07), already done, don't redo or re-check: the core engine, audi
 sub-camera layers and masks, and the whole transitions-and-effects plan (wipes, wipeFilter, pictureFrame,
 charaSpecialEffect, roll / roll axis y, gray / sepia / blur filters, hologram scanlines, title cards, named
 effects). The story-screen layout was re-measured against a game frame and confirmed by the user. The
-portable `userdata/` folder holds all user files. There is no open task: wait for the user to name the
+portable `userdata/` folder holds all user files. Save / Load anytime with an autosave (30 slots, quick save,
+`Player::resume` replay) is done; see apps/README.md "Save / Load". There is no open task: wait for the user to name the
 next one rather than picking items from gaps lists yourself.
 
 Player spec: docs/fatecafe_behavior.md. Fate Café is the default: copy its

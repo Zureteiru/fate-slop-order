@@ -53,6 +53,9 @@ vnreader.exe --smoke 0 --until "after effect" --screenshot shot.bmp   # stop on 
 vnreader.exe --smoke 40 --log --screenshot log.bmp   # --log opens the LOG screen, --auto turns AUTO on, before the capture
 vnreader.exe --picker home --screenshot home.bmp   # hidden window: a picker screen once its images are in
 vnreader.exe --picker chapter=fuyuki --screenshot ch.bmp   # or end=fuyuki:0 for the end-of-part card
+vnreader.exe --scripts 0100000011 --smoke 20 --quicksave --screenshot a.bmp   # quick save at the capture
+vnreader.exe --scripts 0100000011 --load quick --smoke 0 --screenshot b.bmp   # load it (auto, quick or 1-30): same frame
+vnreader.exe --smoke 20 --savescreen load --screenshot load.bmp   # --savescreen save|load opens that screen before the capture
 vnreader.exe --no-audio   # no sound device (the mixer still runs in real time, so voice waits keep their timing)
 ```
 
@@ -70,6 +73,11 @@ vnreader.exe --no-audio   # no sound device (the mixer still runs in real time, 
 | in the log: wheel, drag, ↑ ↓ PgUp PgDn, d-pad ↑ ↓, sticks | scroll |
 | in the log: click, Esc, right click / B, Space / A | close the log |
 | `S` | skip to the next script |
+| click SAVE / F2 / L shoulder | Save screen |
+| click LOAD / F3 / R shoulder (also the picker home's Load button) | Load screen |
+| F5 / F9 | quick save / quick load |
+| on the Save / Load screen: d-pad / arrows, A / Enter, tap | move, pick (tabs switch pages) |
+| on the Save / Load screen: X / Delete, B / Esc | delete the focused save, close |
 | `-` / `=` | master volume down / up (10% steps) |
 | `M` | mute / unmute |
 | Esc / Start | back to the chapter page (from the picker's home: quit; with `--scripts`: quit) |
@@ -100,7 +108,32 @@ copy and without network it shows an error with Retry. A file the user puts at `
 is used instead and never refreshed (offline use). English names come from its `source*` fields.
 
 **Progress:** `<user folder>/progress.json` (written by the app): the EN/JP choice, the last part opened and the
-parts read per chapter. It remembers the part, not the line inside it.
+parts read per chapter. The line inside the part is kept by the autosave (see "Save / Load").
+
+## Save / Load
+
+Save and load anywhere while reading, plus an autosave of the line being read (user decision, 2026-11-07).
+
+- **Slots:** an **autosave**, a **quick save** and **30 slots** (3 pages of 10), in `<user folder>/saves/fgo.json`.
+  Runs without the picker (`--scripts`, story smoke runs) use `saves/scripts.json`, so they never replace the
+  reader's autosave.
+- **Autosave:** every new line or choice replaces it; the file is written at most every 5 s, and always when a part
+  is left or started and when the app quits. Finishing a part clears it. The home's **Continue** resumes it when it
+  is in the last part opened (same region), otherwise Continue starts that part from its top as before.
+- **What a save holds:** the part (chapter, section, region), the script index and id, the stop (instruction index of
+  the line or choice), the choices taken earlier in that script, the line number, a hash of the script text, and a
+  preview (speaker, text, background, date). Nothing of the stage is stored.
+- **Loading** replays that script from its top, muted and without waits, up to the stop (`Player::resume`), so the
+  stage, BGM, Back history and LOG are as if the reader had read there. Looping SEs started earlier are not
+  restored (same as Back). If Atlas edited the script (the hash differs), it resumes at the first line with the saved
+  line number; if that fails too, the script starts from its top (logged). Loading a save from another part switches
+  parts.
+- **Save / Load screen:** a 2x5 grid of cards (thumbnail = the save's background, slot, date, chapter · part, the
+  line) with page tabs; Load also has an "Auto / Quick" page. Overwriting, deleting, and loading from the story
+  ask first (loading from the picker does not). The story is paused underneath. Not game art (the game has no save
+  screen): it follows the LOG screen's look.
+- **SAVE / LOAD buttons:** text plates above the text box's top right, see-through white like LOG
+  (`UiLayout::save_button` / `load_button`); they don't move LOG / AUTO.
 
 ## Audio
 
@@ -199,7 +232,7 @@ without a new reference from them (`--smoke 0 --until "text"` captures the frame
 - **Movies:** movie cues are skipped (logged).
 - **Voice replay from the LOG screen:** the backlog keeps each line's voice, but tapping it does nothing yet.
 - **Picker extras:** Fate Café's Events / Interludes / Story Mode tabs, the map and summary views, search,
-  filters, "Mark read" buttons and resuming at the exact line.
+  filters and "Mark read" buttons.
 - **Sub-camera extras:** split-screen windows (`subCameraFilter maskEdge`) are clipped with a hard edge (the
   script's edge softness is ignored); `subCameraRoll` and `subBlur` are not supported.
 - **Controller choices:** a controller cannot move between choice buttons yet (the picker's `FocusNav` is

@@ -354,3 +354,62 @@ TEST(player_chara_roll_axis_y_is_a_flip_not_a_spin) {
     CHECK_NEAR(a.roll_y.duration, 0.4, 1e-9);
     CHECK_NEAR(a.roll.to, 30, 1e-6);  // other axes keep the ordinary roll
 }
+
+TEST(player_choice_path_follows_choose_and_back) {
+    Run r("？1：A\n＠\na\n[k]\n？2：B\n＠\nb\n[k]\n？！\n＠\nafter\n[k]\n");
+    REQUIRE(r.player.status() == Status::AwaitChoice);
+    CHECK(r.player.choice_path().empty());
+    r.player.choose(1);
+    CHECK(r.player.choice_path() == std::vector<int>{1});
+    CHECK(r.player.back());  // back to the choice: the pick is forgotten
+    CHECK(r.player.status() == Status::AwaitChoice);
+    CHECK(r.player.choice_path().empty());
+}
+
+TEST(player_resume_reaches_the_stop_through_a_choice) {
+    const char* src =
+        "[scene 100]\n[bgm BGM_A 0]\n＠\nfirst\n[k]\n"
+        "？1：Left\n[scene 1]\n？2：Right\n[scene 2]\n？！\n"
+        "[wt 2]\n＠Mash\nafter\n[k]\n＠\nlast\n[k]\n";
+    Run played(src);
+    played.player.advance();
+    played.player.advance();
+    REQUIRE(played.player.status() == Status::AwaitChoice);
+    played.player.choose(1);
+    REQUIRE(drive::until(played.player, [&] { return drive::at_say(played.player, 12); }));
+    const std::size_t stop = played.player.pc();
+    const std::vector<int> path = played.player.choice_path();
+
+    Run r(src);
+    REQUIRE(r.player.resume(stop, path));
+    CHECK(r.player.status() == Status::AwaitAdvance);  // shown in full
+    CHECK(drive::at_say(r.player, 12));
+    CHECK_EQ(r.player.stage().background, std::string("2"));
+    CHECK_EQ(r.player.backlog().size(), static_cast<std::size_t>(2));
+    CHECK(r.player.choice_path() == path);
+    const auto ev = r.player.drain_audio();
+    REQUIRE(ev.size() == 1u);  // only the BGM of that point
+    CHECK(ev[0].kind == AudioEvent::Kind::BgmPlay);
+    CHECK_EQ(ev[0].name, std::string("BGM_A"));
+    CHECK(r.player.back());  // the history was rebuilt by the replay
+    CHECK(r.player.status() == Status::AwaitChoice);
+}
+
+TEST(player_resume_at_a_choice_and_failures) {
+    const char* src = "＠\nfirst\n[k]\n？1：L\n？2：R\n？！\n＠\nend\n[k]\n";
+    Run probe(src);
+    probe.player.advance();
+    probe.player.advance();
+    REQUIRE(probe.player.status() == Status::AwaitChoice);
+    const std::size_t choice_pc = probe.player.pc();
+
+    Run at_choice(src);
+    CHECK(at_choice.player.resume(choice_pc, {}));
+    CHECK(at_choice.player.status() == Status::AwaitChoice);
+
+    Run bad_option(src);
+    probe.player.choose(0);
+    CHECK(!bad_option.player.resume(probe.player.pc(), {5}));  // option out of range
+    Run bad_pc(src);
+    CHECK(!bad_pc.player.resume(99999, {}));  // never reached: the script ends
+}

@@ -8,6 +8,8 @@
 #include "vnr/rt/catalogue.h"
 #include "vnr/rt/focus_nav.h"
 #include "vnr/rt/picker.h"
+#include "vnr/rt/saves.h"
+#include "vnr/program.h"
 
 #ifndef VNR_FIXTURE_DIR
 #error "VNR_FIXTURE_DIR must point at .cache/scripts"
@@ -497,4 +499,183 @@ TEST(reading_arrows_still_advance_and_go_back) {
     CHECK_EQ(app.player()->text().say->text.plain(), "Hello.");
     step(app, {ev(InputEvent::Kind::Cancel)});
     CHECK(app.quit_requested());  // no picker: Esc quits as before
+}
+
+// ---- saves (save slots, quick save, autosave, the Save / Load screen)
+
+TEST(saves_round_trip_and_resume_point) {
+    SaveFile f;
+    SaveEntry e;
+    e.chapter_id = "alpha";
+    e.section = 3;
+    e.region = Region::JP;
+    e.chapter_label = "Prologue";
+    e.part_label = "Section \"3\"";
+    e.script_index = 1;
+    e.script_id = "9900000011";
+    e.script_hash = 4000000000u;
+    e.stop_pc = 7;
+    e.choices = {1, 0};
+    e.line = 12;
+    e.speaker = "Mash";
+    e.text = "Senpai\\?";
+    e.background = "10000";
+    e.auto_mode = true;
+    e.saved_at = 1762524300;
+    f.slots[5] = e;
+    f.quick = e;
+    const SaveFile g = parse_saves(serialize_saves(f));
+    REQUIRE(g.slots[5].has_value());
+    CHECK(!g.autosave.has_value());
+    CHECK(g.quick.has_value());
+    CHECK(!g.slots[0].has_value());
+    const SaveEntry& r = *g.slots[5];
+    CHECK_EQ(r.chapter_id, "alpha");
+    CHECK_EQ(r.section, static_cast<std::size_t>(3));
+    CHECK(r.region == Region::JP);
+    CHECK_EQ(r.part_label, "Section \"3\"");
+    CHECK_EQ(r.script_hash, 4000000000u);
+    CHECK_EQ(r.stop_pc, static_cast<std::size_t>(7));
+    CHECK(r.choices == (std::vector<int>{1, 0}));
+    CHECK_EQ(r.text, "Senpai\\?");
+    CHECK(r.auto_mode);
+    CHECK_EQ(r.saved_at, static_cast<std::int64_t>(1762524300));
+    CHECK(!parse_saves("{oops").quick.has_value());
+    CHECK(!parse_saves(R"({"quick": {"chapter": "", "section": 0}})").quick.has_value());  // incomplete entry dropped
+
+    // preview: cut by characters (not bytes), newlines become spaces
+    CHECK_EQ(preview_text("ab\ncd", 60), "ab cd");
+    CHECK_EQ(preview_text("\xE5\x85\x88\xE8\xBC\xA9\xE3\x80\x82", 2), "\xE5\x85\x88\xE8\xBC\xA9\xE2\x80\xA6");
+    CHECK(!format_save_time(1762524300).empty());
+
+    // resume point: the saved stop when the script is unchanged, else the dialogue at the saved line
+    Diagnostics diag;
+    const Program prog = compile(kTinyScript, {}, diag);
+    SaveEntry at_bye;
+    at_bye.stop_pc = 1;
+    at_bye.line = 4;
+    at_bye.script_hash = fnv1a(kTinyScript);
+    auto rp = resume_point(at_bye, prog, fnv1a(kTinyScript));
+    REQUIRE(rp.has_value());
+    CHECK_EQ(rp->stop_pc, static_cast<std::size_t>(1));
+    at_bye.stop_pc = 0;  // edited script: the hash differs, the line finds the dialogue
+    rp = resume_point(at_bye, prog, 12345);
+    REQUIRE(rp.has_value());
+    CHECK(std::holds_alternative<SayOp>(prog.code[rp->stop_pc]));
+    CHECK_EQ(std::get<SayOp>(prog.code[rp->stop_pc]).line, 4);
+    at_bye.line = 99;
+    CHECK(!resume_point(at_bye, prog, 12345).has_value());
+}
+
+namespace {
+bool wait_for_line(App& app, const char* text) {
+    for (int i = 0; i < 2000; ++i) {
+        const Player* p = app.player();
+        if (app.phase() == App::Phase::Playing && p && p->status() == Status::AwaitAdvance && p->text().say &&
+            p->text().say->text.plain() == text)
+            return true;
+        std::vector<InputEvent> in;
+        if (p && p->status() == Status::Typing) in.push_back(ev(InputEvent::Kind::Advance));
+        step(app, in, 0.05);
+    }
+    return false;
+}
+std::string saves_file(Env& env) {
+    const auto& d = env.user.data[kSavesKey];
+    return {d.begin(), d.end()};
+}
+}  // namespace
+
+TEST(saves_quick_save_load_autosave_and_resume_after_relaunch) {
+    Env env;
+    AppConfig cfg;
+    cfg.picker = true;
+    {
+        App app(env.platform, cfg);
+        settle(app);
+        REQUIRE(app.picker() && app.picker()->catalogue());
+        const auto part = part_for(*app.picker()->catalogue(), "alpha", 0, Region::NA);
+        REQUIRE(part.has_value());
+        app.start_part(*part);
+        REQUIRE(wait_for_line(app, "Hello."));
+        REQUIRE(app.saves().autosave.has_value());  // the autosave follows every line
+        CHECK_EQ(app.saves().autosave->text, "Hello.");
+        CHECK(saves_file(env).find("Hello.") != std::string::npos);  // the first one is written at once
+        step(app, {ev(InputEvent::Kind::Advance)});
+        REQUIRE(wait_for_line(app, "Bye."));
+        CHECK_EQ(app.saves().autosave->text, "Bye.");
+
+        step(app, {ev(InputEvent::Kind::QuickSave)});
+        REQUIRE(app.saves().quick.has_value());
+        CHECK_EQ(app.saves().quick->script_index, static_cast<std::size_t>(0));
+        CHECK_EQ(app.saves().quick->speaker, "Mash");
+        CHECK_EQ(app.saves().quick->chapter_id, "alpha");
+        CHECK(saves_file(env).find("\"quick\": {") != std::string::npos);
+
+        // on to the second script, then quick load back to "Bye." in the first
+        step(app, {ev(InputEvent::Kind::Advance)});
+        REQUIRE(wait_for_line(app, "Hello."));
+        CHECK_EQ(app.script_index(), static_cast<std::size_t>(1));
+        CHECK_EQ(app.saves().autosave->script_index, static_cast<std::size_t>(1));
+        step(app, {ev(InputEvent::Kind::QuickLoad)});
+        REQUIRE(wait_for_line(app, "Bye."));
+        CHECK_EQ(app.script_index(), static_cast<std::size_t>(0));
+        CHECK_EQ(app.player()->backlog().size(), static_cast<std::size_t>(2));  // the replay rebuilt the log
+
+        // the SAVE button opens the Save screen on the first card; A saves there; B closes
+        tap(app, centre(app.ui().save_button));
+        REQUIRE(app.save_screen().is_open());
+        CHECK(app.save_screen().mode() == SaveScreen::Mode::Save);
+        const Status before = app.player()->status();
+        step(app, {ev(InputEvent::Kind::Advance)});
+        REQUIRE(app.saves().slots[0].has_value());
+        CHECK_EQ(app.saves().slots[0]->text, "Bye.");
+        CHECK(app.save_screen().is_open());
+        step(app, {ev(InputEvent::Kind::Advance)});  // a full slot asks first: No is focused
+        CHECK(app.save_screen().confirming());
+        step(app, {ev(InputEvent::Kind::Back)});
+        CHECK(!app.save_screen().confirming());
+        step(app, {ev(InputEvent::Kind::Back)});
+        CHECK(!app.save_screen().is_open());
+        CHECK(app.player()->status() == before);  // the story was paused underneath
+
+        // Load screen from the story: loading asks first; Yes loads slot No.01
+        step(app, {ev(InputEvent::Kind::OpenLoad)});
+        REQUIRE(app.save_screen().is_open());
+        CHECK_EQ(app.save_screen().page(), static_cast<std::size_t>(0));  // Auto / Quick
+        step(app, {ev(InputEvent::Kind::DeleteSave)});  // the focused card is the autosave
+        CHECK(app.save_screen().confirming());
+        step(app, {ev(InputEvent::Kind::Back)});
+        CHECK(app.saves().autosave.has_value());
+        step(app, {ev(InputEvent::Kind::Back)});
+        step(app, {ev(InputEvent::Kind::Advance)});  // read on: the autosave moves to script 1
+        REQUIRE(wait_for_line(app, "Hello."));
+        CHECK_EQ(app.saves().autosave->script_index, static_cast<std::size_t>(1));
+    }  // quitting writes the autosave
+
+    App again(env.platform, cfg);
+    settle(again);
+    REQUIRE(again.saves().autosave.has_value());
+    CHECK(again.saves().slots[0].has_value());
+    const Picker& pk = *again.picker();
+    CHECK_EQ(pk.focused_label(), "Continue \xC2\xB7 Alpha");
+    step(again, {ev(InputEvent::Kind::Advance)});  // Continue resumes the autosave's line
+    REQUIRE(wait_for_line(again, "Hello."));
+    CHECK_EQ(again.script_index(), static_cast<std::size_t>(1));
+
+    // the picker's Load button opens the Load screen; loading slot No.01 needs no confirmation there
+    step(again, {ev(InputEvent::Kind::Cancel)});
+    REQUIRE(again.phase() == App::Phase::Picker);
+    step(again, {ev(InputEvent::Kind::Back)});
+    CHECK(pk.screen() == Picker::Screen::Home);
+    step(again, {ev(InputEvent::Kind::OpenLoad)});
+    REQUIRE(again.save_screen().is_open());
+    step(again, {nav(NavDir::Up)});  // to the tabs
+    step(again, {nav(NavDir::Right)});
+    step(again, {ev(InputEvent::Kind::Advance)});  // page 1
+    CHECK_EQ(again.save_screen().page(), static_cast<std::size_t>(1));
+    step(again, {nav(NavDir::Down)});
+    step(again, {ev(InputEvent::Kind::Advance)});
+    REQUIRE(wait_for_line(again, "Bye."));
+    CHECK_EQ(again.script_index(), static_cast<std::size_t>(0));
 }

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #include "vnr/rt/special_mask.h"
 
@@ -335,6 +336,25 @@ void outline(DrawList& out, const Rect& r, float t, Color c) {
     out.rect({r.x + r.w - t, r.y + t, t, r.h - 2 * t}, c);
 }
 
+void draw_save_buttons(const UiLayout& ui, Vec2 ms, GlyphAtlas& atlas, DrawList& out) {
+    const Color dim{1, 1, 1, ui.button_opacity};
+    for (const auto& [rect, name] : {std::pair{ui.save_button, "SAVE"}, std::pair{ui.load_button, "LOAD"}}) {
+        const Rect r = shifted(rect, ms);
+        out.rect(r, {0, 0, 0, 0.35f});
+        outline(out, r, 1.5f, dim);
+        const RichText t = parse_rich_text(name, {});
+        const float w = text_width(atlas, t, ui.save_label_px);
+        TextStyleBox b;
+        b.px = ui.save_label_px;
+        b.line_height = ui.save_label_px * 1.4f;
+        b.max_lines = 1;
+        b.first_line = 0;
+        b.ink = dim;
+        b.box = {r.x + (r.w - w) / 2, r.y + (r.h - b.line_height) / 2, w + 4, b.line_height};
+        draw_text(atlas, t, t.glyph_count, b, out);
+    }
+}
+
 void draw_story_buttons(const SceneAssets& a, const UiLayout& ui, Vec2 ms, DrawList& out) {
     const UiSkin& skin = a.skin;
     const Color dim{1, 1, 1, ui.button_opacity};
@@ -356,6 +376,9 @@ StoryButton story_button_at(const UiLayout& ui, Vec2 p, bool text_box_visible) {
     if (!text_box_visible) return StoryButton::None;
     if (inside(ui.log_hit, p)) return StoryButton::Log;
     if (inside(ui.auto_hit, p)) return StoryButton::Auto;
+    auto grown = [](const Rect& r) { return Rect{r.x - 4, r.y - 6, r.w + 8, r.h + 12}; };
+    if (inside(grown(ui.save_button), p)) return StoryButton::Save;
+    if (inside(grown(ui.load_button), p)) return StoryButton::Load;
     return StoryButton::None;
 }
 
@@ -482,6 +505,7 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
         tb.shadow = kShadow;
         draw_text(atlas, tv.say->text, tv.shown, tb, out);
         draw_story_buttons(a, ui, ms, out);
+        draw_save_buttons(ui, ms, atlas, out);
         // No spinning "next" marker: the user asked for it to be left out.
     }
 
