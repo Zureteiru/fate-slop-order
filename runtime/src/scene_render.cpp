@@ -204,8 +204,9 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
         // Surfaces draw into a scratch list in surface coordinates first; charaSpecialEffect masks the
         // finished sprite over its body's box (the first quad).
         DrawList local;
-        const float roll = e->roll.value();
-        DrawList& target = surface || e->special || roll != 0 ? local : out;
+        const float roll = e->roll.value(), roll_y = e->roll_y.value();
+        const bool turned = roll != 0 || roll_y != 0;
+        DrawList& target = surface || e->special || turned ? local : out;
         const StageTransform& tt = surface ? StageTransform{} : t;
         if (e->kind == ElementKind::Chara) {
             FaceAnchor anchor;
@@ -229,12 +230,16 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
         // charaRoll turns the sprite (after its mask, as the CSS transform does) about the top centre of
         // its body box, or that point moved by the script's origin (Fate Café).
         auto turn = [&](std::vector<Quad>& quads, const Rect& body) {
-            if (roll == 0) return;
+            if (!turned) return;
             const Vec2 pivot{body.x + body.w / 2 + e->roll_origin.x, body.y + e->roll_origin.y};
-            for (Quad& q : quads) rotate(q, pivot, roll);
+            const float squeeze = std::cos(roll_y * 3.14159265f / 180.f);  // rotateY without perspective
+            for (Quad& q : quads) {
+                for (Vec2& p : q.pos) p.x = pivot.x + (p.x - pivot.x) * squeeze;
+                rotate(q, pivot, roll);
+            }
         };
         if (!surface) {
-            if (!local.quads.empty() && (e->special || roll != 0)) {
+            if (!local.quads.empty() && (e->special || turned)) {
                 const Rect body = quad_bounds(local.quads.front());
                 std::vector<Quad> quads = std::move(local.quads);
                 if (e->special) quads = apply_special_mask(quads, body, *e->special, special_t(*e->special));

@@ -62,6 +62,7 @@ struct Element {
     Anim2 pos;              // offset from the centred figure, y up
     Anim scale;             // 1 = normal
     Anim roll;              // degrees
+    Anim roll_y;            // degrees about the vertical axis (charaRollAxis y: a card-flip turn)
     Vec2 roll_origin;
     float depth = 0;
     std::string layer;      // sub-render layer key; empty = main

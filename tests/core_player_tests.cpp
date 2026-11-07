@@ -345,3 +345,12 @@ TEST(player_chara_special_effect_modes) {
     CHECK(!els.at("B").special->incoming);
     CHECK(els.at("C").special->radial);
 }
+
+TEST(player_chara_roll_axis_y_is_a_flip_not_a_spin) {
+    Run r("[charaSet A 98001000 1 Mash]\n[charaFadein A 0 1]\n[charaRollAxis A y 180 0.4 0]\n[charaRollAxis A z 30 0.2 0]\n"
+          "＠Mash\nHi.\n[k]\n");
+    const Element& a = r.player.stage().elements.at("A");
+    CHECK_NEAR(a.roll_y.to, 180, 1e-6);
+    CHECK_NEAR(a.roll_y.duration, 0.4, 1e-9);
+    CHECK_NEAR(a.roll.to, 30, 1e-6);  // other axes keep the ordinary roll
+}

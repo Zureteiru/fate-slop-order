@@ -114,6 +114,7 @@ void for_each_anim(Stage& s, F&& f) {
         f(e.pos.y);
         f(e.scale);
         f(e.roll);
+        f(e.roll_y);
         f(e.attack);
         if (e.cutin) f(e.cutin->progress);
         if (e.special) f(e.special->progress);

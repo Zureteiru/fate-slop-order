@@ -600,7 +600,11 @@ void Player::exec(const Command& c, bool inline_cmd, bool skipping) {
             return;
         }
         if (n == "charaRollMove") { e.roll.go(static_cast<float>(num(2, 0)), num(1, 0), Ease::Ease, WaitCat::CharaMove); return; }
-        if (n == "charaRollAxis") { e.roll.go(static_cast<float>(num(2, 0)), num(3, 0), Ease::Ease, WaitCat::CharaMove); return; }
+        if (n == "charaRollAxis") {  // Fate Café keeps the y axis apart (CSS rotateY)
+            Anim& a = (c.arg(1) == "y" || c.arg(1) == "Y") ? e.roll_y : e.roll;
+            a.go(static_cast<float>(num(2, 0)), num(3, 0), Ease::Ease, WaitCat::CharaMove);
+            return;
+        }
         if (n == "charaAttack") {
             if (const auto p = parse_position(c.arg(2))) e.attack_offset = position_offset(*p);
             e.attack.snap(0);
