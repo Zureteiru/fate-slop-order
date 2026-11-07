@@ -311,3 +311,37 @@ TEST(player_mask_edge_layers_move_as_a_group_and_subCameraOff_hides_them) {
     REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "c"); }) >= 0);
     CHECK(r.player.stage().placement(el(r.player, "S")).visible);  // back on the main stage
 }
+
+TEST(player_chara_special_effect_keeps_mode_and_duration) {
+    Run r("[charaSet A 98001000 1 Mash]\n[charaFadein A 0 1]\n[charaSpecialEffect A flashErasure 0 0.5]\n[wait chara]\n"
+          "＠Mash\nGone.\n[k]\n");
+    const Element& a = r.player.stage().elements.at("A");
+    REQUIRE(a.special);
+    CHECK(!a.special->incoming);
+    CHECK(!a.special->reverse);
+    CHECK(!a.special->radial);
+    CHECK_NEAR(a.special->progress.duration, 0.5, 1e-9);
+    CHECK_NEAR(a.opacity.value(), 1, 1e-6);  // the mask erases, not the opacity
+    const double t = drive::time_until(r.player, [&] { return r.player.status() != Status::Waiting; });
+    CHECK_NEAR(t, 0.5, 2 * drive::kDt);  // [wait chara] waits for it
+    drive::time_until(r.player, [&] { return !r.player.stage().elements.at("A").special; }, 1);
+    const Element& done = r.player.stage().elements.at("A");
+    CHECK(!done.shown);
+    CHECK_NEAR(done.opacity.value(), 0, 1e-6);
+}
+
+TEST(player_chara_special_effect_modes) {
+    Run r("[charaSet A 98001000 1 Mash]\n[charaSet B 98001000 1 Mash]\n[charaSet C 98001000 1 Mash]\n"
+          "[charaSpecialEffect A appearance 0,-10]\n[charaSpecialEffect B erasureReverse]\n[charaSpecialEffect C wipeTime]\n"
+          "＠Mash\nHi.\n[k]\n");
+    const auto& els = r.player.stage().elements;
+    const Element& a = els.at("A");
+    REQUIRE(a.special && els.at("B").special && els.at("C").special);
+    CHECK(a.special->incoming);
+    CHECK(a.shown);
+    CHECK_NEAR(a.opacity.value(), 1, 1e-6);
+    CHECK_NEAR(a.special->progress.duration, 2, 1e-9);  // Fate Café's default
+    CHECK(els.at("B").special->reverse);
+    CHECK(!els.at("B").special->incoming);
+    CHECK(els.at("C").special->radial);
+}

@@ -116,6 +116,7 @@ void for_each_anim(Stage& s, F&& f) {
         f(e.roll);
         f(e.attack);
         if (e.cutin) f(e.cutin->progress);
+        if (e.special) f(e.special->progress);
     }
     f(s.fade.opacity);
     f(s.wipe.cover);
@@ -137,6 +138,14 @@ void Stage::tick(double dt) {
             e.shown = false;
             e.opacity.snap(0);
             e.cutin.reset();
+        }
+        if (e.special && !e.special->progress.active()) {
+            // a finished erasure leaves the character hidden; a finished appearance just shows it
+            if (!e.special->incoming) {
+                e.shown = false;
+                e.opacity.snap(0);
+            }
+            e.special.reset();
         }
     }
     for (auto& [key, l] : sub_layers)

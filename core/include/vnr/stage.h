@@ -33,6 +33,14 @@ struct Cutin {
     Anim progress;          // 0 -> 1
 };
 
+// charaSpecialEffect: the character is erased (or revealed) by a moving mask band, Fate Café style.
+struct SpecialErase {
+    bool incoming = false;  // appearance* reveal; the erasure family hides
+    bool reverse = false;   // the band runs bottom-up instead of top-down
+    bool radial = false;    // wipe / darkwipe / wipetime*: a circle from the centre instead of a band
+    Anim progress;          // 0 -> 1, linear in time (the renderer eases it)
+};
+
 enum class ElementKind { Chara, Image, Scene };
 
 struct Element {
@@ -61,6 +69,7 @@ struct Element {
     bool shadow = false;
     Shake shake;
     std::optional<Cutin> cutin;
+    std::optional<SpecialErase> special;
     Anim attack;            // charaAttack lunge progress 0 -> 1 -> done
     Vec2 attack_offset;
     bool dimmed = false;    // talk focus: someone else is speaking

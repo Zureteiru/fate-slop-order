@@ -385,6 +385,7 @@ void Player::exec(const Command& c, bool inline_cmd, bool skipping) {
     auto fade_chara = [&](Element& e, bool in, double t, const std::string& pos_arg, bool overlay) {
         e.shown = in;
         e.cutin.reset();
+        e.special.reset();
         if (in) {
             e.overlay = overlay;
             if (const auto p = parse_position(pos_arg)) {
@@ -667,14 +668,26 @@ void Player::exec(const Command& c, bool inline_cmd, bool skipping) {
             return;
         }
         if (n == "charaSpecialEffect") {
+            // Fate Café's mode table: which way, and which mask shape.
             static const std::set<std::string, std::less<>> outgoing = {
                 "erasure", "enemyerasure", "darkenemyerasure", "flasherasure", "erasurereverse", "wipe", "darkwipe", "wipetime"};
             static const std::set<std::string, std::less<>> incoming = {"appearance", "appearancereverse", "wipetimere"};
             std::string mode = c.arg(1);
             std::transform(mode.begin(), mode.end(), mode.begin(), [](unsigned char ch) { return std::tolower(ch); });
-            const double t = has_num(3) ? num(3, 2) : 2.0;
-            if (outgoing.count(mode)) fade_chara(e, false, t, {}, false);
-            else if (incoming.count(mode)) fade_chara(e, true, t, c.arg(2), false);
+            const bool in = incoming.count(mode) > 0;
+            if (!in && !outgoing.count(mode)) return;
+            const double t = has_num(3) && num(3, 2) > 0 ? num(3, 2) : 2.0;
+            if (in) {
+                fade_chara(e, true, 0, c.arg(2), false);  // placed and opaque; the mask does the reveal
+            } else {
+                e.cutin.reset();
+            }
+            SpecialErase fx;
+            fx.incoming = in;
+            fx.reverse = mode == "erasurereverse" || mode == "appearancereverse";
+            fx.radial = mode == "wipe" || mode == "darkwipe" || mode == "wipetime" || mode == "wipetimere";
+            fx.progress.go(1, t, Ease::Linear, WaitCat::CharaFade);
+            e.special = fx;
             return;
         }
         return;
