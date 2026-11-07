@@ -22,13 +22,22 @@ AssetState AssetCache::request_bytes(const std::string& url, const std::string& 
 
 AssetState AssetCache::request_texture(const std::string& url) { return request(url, {}, true); }
 
-AssetState AssetCache::request(const std::string& url, const std::string& range, bool texture) {
+AssetState AssetCache::request_fresh_bytes(const std::string& url) { return request(url, {}, false, true); }
+
+void AssetCache::forget(const std::string& url, const std::string& range) {
+    const auto it = entries_.find(cache_key(url, range));
+    if (it == entries_.end() || it->second.state == AssetState::Loading) return;
+    if (it->second.texture && it->second.tex.id) textures_.release(it->second.tex.id);
+    entries_.erase(it);
+}
+
+AssetState AssetCache::request(const std::string& url, const std::string& range, bool texture, bool fresh) {
     const std::string key = cache_key(url, range);
     Entry& e = entries_[key];
     if (e.state != AssetState::Missing) return e.state;
     e.texture = texture;
     std::vector<std::uint8_t> cached;
-    if (platform_.files.read(key, cached) && !cached.empty()) {
+    if (!fresh && platform_.files.read(key, cached) && !cached.empty()) {
         finish(e, key, std::move(cached), false);
         return e.state;
     }

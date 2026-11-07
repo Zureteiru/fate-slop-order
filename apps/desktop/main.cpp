@@ -1,7 +1,10 @@
 // Desktop wrapper (Windows now, macOS/Linux later): window + SDL backend + OS services around the
 // shared runtime. All reading logic lives in runtime/ and core/.
 //
-//   vnreader [--region NA|JP] [--scripts 0100000010,0100000011]
+//   vnreader                    (the chapter picker)
+//   vnreader [--region NA|JP] [--scripts 0100000010,0100000011]   (one part, no picker)
+//            [--picker home|chapter=<id>|end=<id>:<section> --screenshot out.bmp]
+//                               (hidden window: open that picker screen, wait for its images, save a frame, exit)
 //            [--smoke N --screenshot out.bmp]   (hidden window: tap N lines, save a frame, exit)
 //            [--until "text"]   (smoke: keep tapping until a line containing "text" is waiting)
 //            [--log] [--auto]   (smoke: open the LOG screen / turn AUTO on before the capture)
@@ -20,6 +23,7 @@
 #include "desktop_os.h"
 #include "sdl_backend.h"
 #include "vnr/rt/app.h"
+#include "vnr/rt/picker.h"
 
 using namespace vnr;
 
@@ -89,11 +93,13 @@ int main(int argc, char** argv) {
     const char* screenshot = nullptr;
     std::string until;
     bool matched = false;
-    bool open_log = false, auto_on = false, no_audio = false;
+    bool open_log = false, auto_on = false, no_audio = false, scripts_given = false;
+    std::string picker_shot;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--region" && i + 1 < argc) cfg.region = std::strcmp(argv[++i], "JP") == 0 ? Region::JP : Region::NA;
-        else if (a == "--scripts" && i + 1 < argc) cfg.script_ids = split(argv[++i], ',');
+        else if (a == "--scripts" && i + 1 < argc) { cfg.script_ids = split(argv[++i], ','); scripts_given = true; }
+        else if (a == "--picker" && i + 1 < argc) picker_shot = argv[++i];
         else if (a == "--smoke" && i + 1 < argc) smoke = std::atoi(argv[++i]);
         else if (a == "--screenshot" && i + 1 < argc) screenshot = argv[++i];
         else if (a == "--until" && i + 1 < argc) until = argv[++i];
@@ -102,14 +108,20 @@ int main(int argc, char** argv) {
         else if (a == "--no-audio") no_audio = true;
     }
 
+    // The picker unless a part was given on the command line (--scripts) or a story smoke run asked for
+    // the default part (--smoke without --scripts plays Fuyuki part 1, as before the picker existed).
+    cfg.picker = !picker_shot.empty() || (!scripts_given && smoke < 0);
+    cfg.picker_screen = picker_shot;
+    const bool hidden = smoke >= 0 || !picker_shot.empty();
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
         std::fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
         return 1;
     }
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    const Uint32 win_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (smoke >= 0 ? SDL_WINDOW_HIDDEN : 0);
+    const Uint32 win_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (hidden ? SDL_WINDOW_HIDDEN : 0);
     SDL_Window* window = SDL_CreateWindow("vnreader", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 576, win_flags);  // 16:9, as the game
-    const Uint32 r_flags = smoke >= 0 ? SDL_RENDERER_SOFTWARE : (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    const Uint32 r_flags = hidden ? SDL_RENDERER_SOFTWARE : (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     SDL_Renderer* sdl_renderer = window ? SDL_CreateRenderer(window, -1, r_flags) : nullptr;
     if (!sdl_renderer) {
         std::fprintf(stderr, "SDL window/renderer: %s\n", SDL_GetError());
@@ -181,6 +193,12 @@ int main(int argc, char** argv) {
                 }
             }
             if (smoke >= 0 && app.phase() == rt::App::Phase::Finished) running = false;
+            if (!picker_shot.empty()) {
+                // Picker capture: once the screen's catalogue and banners are in (or after 30 s).
+                smoke_clock += dt;
+                const rt::Picker* pk = app.picker();
+                if ((pk && pk->ready() && ++taps > 10) || smoke_clock > 30) running = false;
+            }
 
             app.update(dt, input);
             if (silent) {  // no device: drain the mixer at real time so clips still end
@@ -192,12 +210,12 @@ int main(int argc, char** argv) {
             }
             renderer.sync(app.textures());
             renderer.draw(app.draw_list());
-            if (!running && smoke >= 0) {
+            if (!running && hidden) {
                 std::fprintf(stderr, "[vnreader] smoke: %s\n", app.status().c_str());
                 if (screenshot && !save_screenshot(sdl_renderer, screenshot)) std::fprintf(stderr, "screenshot failed: %s\n", SDL_GetError());
             }
             SDL_RenderPresent(sdl_renderer);
-            if (smoke >= 0) SDL_Delay(1);
+            if (hidden) SDL_Delay(1);
         }
     }
     SDL_DestroyRenderer(sdl_renderer);

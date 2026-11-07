@@ -25,6 +25,11 @@ public:
     // Starts a fetch (or loads from the disk cache immediately). Safe to call every frame.
     AssetState request_bytes(const std::string& url, const std::string& range = {});
     AssetState request_texture(const std::string& url);
+    // Like request_bytes, but always downloads (the disk copy is only replaced on success). For files
+    // that change upstream, e.g. the chapter catalogue.
+    AssetState request_fresh_bytes(const std::string& url);
+    // Drops what is known about `url` (e.g. after a failure, so it can be requested again).
+    void forget(const std::string& url, const std::string& range = {});
 
     AssetState state(const std::string& url, const std::string& range = {}) const;
     const std::vector<std::uint8_t>* bytes(const std::string& url, const std::string& range = {}) const;
@@ -53,7 +58,7 @@ private:
     std::map<RequestId, std::string> inflight_;     // request -> cache key
     std::size_t failed_ = 0;
 
-    AssetState request(const std::string& url, const std::string& range, bool texture);
+    AssetState request(const std::string& url, const std::string& range, bool texture, bool fresh = false);
     void finish(Entry& e, const std::string& key, std::vector<std::uint8_t> data, bool from_network);
 };
 

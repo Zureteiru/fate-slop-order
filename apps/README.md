@@ -44,31 +44,63 @@ cmake --build build-desktop --config Release
 build-desktop/apps/desktop/Release/vnreader.exe
 ```
 
-The default is Fuyuki part 1 (NA). Other options:
+Without options it opens the **chapter picker** (see below). Other options:
 
 ```bash
-vnreader.exe --region JP --scripts 0100000010,0100000011
+vnreader.exe --region JP --scripts 0100000010,0100000011   # one part, no picker
 vnreader.exe --smoke 14 --screenshot shot.bmp   # hidden window: tap 14 lines, save a frame, exit
 vnreader.exe --smoke 0 --until "after effect" --screenshot shot.bmp   # stop on the line containing that text
 vnreader.exe --smoke 40 --log --screenshot log.bmp   # --log opens the LOG screen, --auto turns AUTO on, before the capture
+vnreader.exe --picker home --screenshot home.bmp   # hidden window: a picker screen once its images are in
+vnreader.exe --picker chapter=fuyuki --screenshot ch.bmp   # or end=fuyuki:0 for the end-of-part card
 vnreader.exe --no-audio   # no sound device (the mixer still runs in real time, so voice waits keep their timing)
 ```
+
+`--smoke` without `--scripts` still plays Fuyuki part 1, so the story smoke runs are unchanged.
 
 **Controls:**
 
 | Input | Action |
 |---|---|
-| click / Space / Enter / → / A | advance |
-| right click / Backspace / ← / B | back |
+| click / Space / Enter / → / A / d-pad → | advance |
+| right click / Backspace / ← / B / d-pad ← | back |
 | click a choice, or 1–9 | choose |
 | click AUTO / `A` key / Y | toggle auto |
 | click LOG / `L` / X | open the log |
-| in the log: wheel, drag, ↑ ↓ PgUp PgDn, d-pad, sticks | scroll |
+| in the log: wheel, drag, ↑ ↓ PgUp PgDn, d-pad ↑ ↓, sticks | scroll |
 | in the log: click, Esc, right click / B, Space / A | close the log |
 | `S` | skip to the next script |
 | `-` / `=` | master volume down / up (10% steps) |
 | `M` | mute / unmute |
-| Esc | quit (when the log is closed) |
+| Esc / Start | back to the chapter page (from the picker's home: quit; with `--scripts`: quit) |
+
+## Chapter picker
+
+After Fate Café's reader home (`fatecafe.com/leitor`):
+
+- **Home:** "FGO Reader", an EN/JP switch, a **Start · <first chapter>** button (**Continue · <chapter>** once
+  something was opened; it reopens that part), then each arc ("Arc 1 ——— 10 chapters") with a 3-column grid of
+  chapter cards: the Atlas banner (`static.atlasacademy.io/NA/Banner/questboard_cap*.png`), the gold label, the
+  name and "11 parts · 1h 44min".
+- **Chapter page:** "← All chapters", label, name, subtitle, "parts · scenes · time", the banner, **Start: <first
+  unread part>**, then "Chapter parts 目次" and one row per part (number, name, "spot · scenes · time", "✓ Read").
+  Locked and video-only parts are listed dimmed and can't be picked.
+- **End of part:** the part is marked read and a card over the dimmed last frame offers
+  **Continue to <next part>** (with its place) and **Back to index**.
+- **Reading:** Esc / Start leaves the part for its chapter page (it is not marked read).
+- **EN / JP:** EN uses the NA scripts; a part with no English copy plays in JP, as Fate Café disables EN there.
+
+**Input:** d-pad / arrows move the focus between buttons (grid and list alike), the stick / wheel / a drag
+scroll (the focus follows), A / Enter / Space or a tap picks, B / Backspace / right click goes up one screen.
+The focus logic (`runtime/include/vnr/rt/focus_nav.h`) is generic so the story's choices can use it later.
+
+**Catalogue:** Fate Café's `assets.fatecafe.com/data/atlas/reader.json` (~915 KB, never committed). The app shows
+the copy in its download cache at once and fetches a fresh one once per launch in the background; without a
+copy and without network it shows an error with Retry. A file the user puts at `<user folder>/catalogue/reader.json`
+is used instead and never refreshed (offline use). English names come from its `source*` fields.
+
+**Progress:** `<user folder>/progress.json` (written by the app): the EN/JP choice, the last part opened and the
+parts read per chapter. It remembers the part, not the line inside it.
 
 ## Audio
 
@@ -142,8 +174,10 @@ within 1–2 px (`--smoke 0 --until "text"` captures the frame for a given line)
 
 - **Movies:** movie cues are skipped (logged).
 - **Voice replay from the LOG screen:** the backlog keeps each line's voice, but tapping it does nothing yet.
-- **Chapter picker:** the part is chosen on the command line instead.
+- **Picker extras:** Fate Café's Events / Interludes / Story Mode tabs, the map and summary views, search,
+  filters, "Mark read" buttons and resuming at the exact line.
 - **Wipes:** wipe patterns are drawn as an even fade.
 - **Effects:** particle effects are not drawn.
-- **Controller choices:** a controller cannot move between choice buttons yet. Use the 1–9 keys or the mouse.
+- **Controller choices:** a controller cannot move between choice buttons yet (the picker's `FocusNav` is
+  meant for it). Use the 1–9 keys or the mouse.
 - **Story buttons:** SKIP and hide-message are not drawn (SKIP is left out on purpose).

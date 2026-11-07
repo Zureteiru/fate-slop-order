@@ -46,6 +46,8 @@ public:
     void update(double dt);                  // downloads, delayed starts, finished sounds
     bool take_voice_finished();              // true once after the current voice ended (or failed)
     void stop_all(double fade);
+    // A new part starts (maybe in the other region): fade everything out and forget its clips.
+    void reset(Region region, double fade);
     // An app sound already in memory (e.g. the choice click), on the Ui bus.
     void play_ui(const std::string& name, const SharedBytes& bytes, float volume);
     void set_volumes(const AudioVolumes& v);

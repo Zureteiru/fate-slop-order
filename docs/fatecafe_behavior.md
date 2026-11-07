@@ -448,6 +448,29 @@ All values are measured in stage units at the default settings.
   - All scripts in a section are concatenated.
   - A Section N or chapter title card shows when an effect name matches `bit_queststart*` or `bit_chapterstart*`.
 
+### Reader home and chapter page (recon 2026-11-07)
+
+- **Home (`/leitor`):** title, search, a "Start · <chapter>" button (the last chapter read, else Singularity F),
+  tabs Main Story / Events / Interludes / Story Mode, arc and order filters. Each arc has a header
+  ("Arc 1 ——— 10 chapters") and a 3-column grid of cards: the Atlas `Banner/questboard_cap<war>.png` banner
+  (450×125), the chapter label in gold small caps, the name, and "11 parts · PT-BR · EN · JP · 1h 44min".
+- **Chapter (`/leitor/<id>`):** "← All chapters", label, name, long name, languages and JP release, "11 parts ·
+  31 scenes · 1h 44min", **Start: <part>**, the banner, then "Chapter parts 目次" with List / Map / Summary tabs and
+  "Mark chapter as read". Rows: `sectionNumber` (none for prologues; numbers can skip, Fuyuki has no 7), name,
+  "spot · N scenes · time", and a "Mark read" toggle.
+- **End of a part:** the section is marked read; a notice shows "End of part", the section label,
+  **"Continue to <next section>"** with its spot name (only when there is a next section) and **"Back to index"**.
+  The top bar's "Index" also goes back to the chapter page.
+- **Storage:** `fate-cafe:progresso:v1` = `{fgo: {<chapterId>: {read: [section indices], last, updatedAt}}}`;
+  `fgo-reader:last-scene:v1` keeps the chapter, section and line for the home button; the language
+  (PT-BR / EN / JP) is chosen in the reader and kept in `fgo-reader:text-mode:v1`.
+- **Catalogue:** `reader.json` is fetched with a cache-buster and a 5-minute TTL. Display names are PT-BR; the
+  English ones are in `sourceName`, `sourceChapterLabel`, `sourceLongName` (and arcs' `sourceName`). Sections can be
+  `locked`, video-only (`video`, no scripts) or of type `free`. It holds the Main Story only (41 chapters at data
+  version 895); events and interludes come from other files.
+- **vnreader:** follows this for the home, chapter page and end card (Main Story only; no map, summary, search,
+  filters or "Mark read"; progress per part, not per line). See apps/README.md "Chapter picker".
+
 ---
 
 ## 8. Reference captures (`docs/ref/`)

@@ -6,6 +6,7 @@
 #include <set>
 
 #include "vnr/rt/json.h"
+#include "vnr/rt/picker.h"
 
 namespace vnr::rt {
 
@@ -34,7 +35,12 @@ App::App(Platform& platform, AppConfig config)
     if (!atlas_.ok()) platform_.log.write("font could not be loaded: text will not be drawn");
     if (platform_.user) scene_.skin = load_ui_skin(*platform_.user, textures_, platform_.log);
     if (!scene_.skin.has_talk()) platform_.log.write("no UI sheets (ui/003.png, ui/030.png): using plain boxes");
-    for (const auto& id : config_.script_ids) cache_.request_bytes(script_url(id, config_.region));
+    if (config_.picker) {
+        picker_ = std::make_unique<Picker>(platform_, cache_, atlas_);
+        phase_ = Phase::Picker;
+    } else {
+        for (const auto& id : config_.script_ids) cache_.request_bytes(script_url(id, config_.region));
+    }
     if (platform_.user) {
         std::vector<std::uint8_t> settings;
         if (platform_.user->read(kSettingsKey, settings)) audio_.set_volumes(parse_audio_settings(settings));
@@ -48,6 +54,7 @@ App::~App() = default;
 
 std::string App::status() const {
     switch (phase_) {
+        case Phase::Picker: return picker_ ? picker_->status() : std::string();
         case Phase::LoadingScripts: return "Loading scripts...";
         case Phase::LoadingAssets: {
             const std::size_t done = assets_total_ - std::min(assets_total_, cache_.pending());
@@ -58,6 +65,38 @@ std::string App::status() const {
         case Phase::Finished: return "End of part";
     }
     return {};
+}
+
+void App::start_part(const PartChoice& part) {
+    part_ = part;
+    config_.region = part.region;
+    config_.script_ids = part.script_ids;
+    script_text_.clear();
+    programs_.clear();
+    player_.reset();
+    figure_ids_.clear();
+    assets_total_ = 0;
+    script_index_ = 0;
+    scene_.figures.clear();
+    scene_.region = part.region;
+    log_.close();
+    backdrop_.clear_all();
+    audio_.reset(part.region, 0.5);
+    for (const auto& id : config_.script_ids) cache_.request_bytes(script_url(id, config_.region));
+    platform_.log.write("part: " + part.chapter_id + " #" + std::to_string(part.section) + " " + part.label + " (" +
+                        (part.region == Region::JP ? "JP" : "NA") + ", " + std::to_string(part.script_ids.size()) + " scripts)");
+    phase_ = Phase::LoadingScripts;
+}
+
+// Back to the picker: the end card after the last script, or the chapter page when the reader left early.
+void App::leave_part(bool finished) {
+    player_.reset();
+    log_.close();
+    audio_.stop_all(1.0);
+    if (!finished) backdrop_.clear_all();
+    phase_ = Phase::Picker;
+    if (finished) picker_->part_finished(part_);
+    else picker_->part_left(part_);
 }
 
 void App::load_scripts() {
@@ -159,6 +198,11 @@ void App::finish_assets() {
 void App::start_script(std::size_t index) {
     script_index_ = index;
     if (index >= programs_.size()) {
+        if (picker_) {
+            backdrop_.quads = draw_.quads;  // the last frame drawn, dimmed under the end card
+            leave_part(true);
+            return;
+        }
         phase_ = Phase::Finished;
         player_.reset();
         log_.close();
@@ -194,6 +238,17 @@ void App::choose(std::size_t index) {
 
 void App::handle(const InputEvent& e) {
     if (!player_) return;
+    if (e.kind == InputEvent::Kind::Nav) {  // arrows / d-pad while reading: as before the picker existed
+        InputEvent t = e;
+        switch (static_cast<NavDir>(e.index)) {
+            case NavDir::Right: t.kind = InputEvent::Kind::Advance; break;
+            case NavDir::Left: t.kind = InputEvent::Kind::Back; break;
+            case NavDir::Up: t = {InputEvent::Kind::Scroll, {0, -kNavScrollStep}, 0}; break;
+            case NavDir::Down: t = {InputEvent::Kind::Scroll, {0, kNavScrollStep}, 0}; break;
+        }
+        handle(t);
+        return;
+    }
     if (log_.is_open()) {
         handle_log(e);
         return;
@@ -240,11 +295,13 @@ void App::handle(const InputEvent& e) {
             log_.open(player_->backlog(), atlas_);
             break;
         case InputEvent::Kind::Cancel:
-            quit_ = true;
+            if (picker_) leave_part(false);
+            else quit_ = true;
             break;
         case InputEvent::Kind::SkipScript:
             player_->skip();
             break;
+        case InputEvent::Kind::Nav:
         case InputEvent::Kind::PointerMove:
         case InputEvent::Kind::PointerUp:
         case InputEvent::Kind::Scroll:
@@ -290,10 +347,34 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
             handle_volume(e);
     audio_.update(dt);
     if (player_ && audio_.take_voice_finished()) player_->voice_finished();
-    if (phase_ != Phase::Playing)
+    if (phase_ == Phase::LoadingScripts || phase_ == Phase::LoadingAssets || phase_ == Phase::Finished)
         for (const InputEvent& e : input)
-            if (e.kind == InputEvent::Kind::Cancel) quit_ = true;
+            if (e.kind == InputEvent::Kind::Cancel) {
+                if (picker_ && phase_ != Phase::Finished) {
+                    leave_part(false);
+                    render();
+                    return;  // the Esc is used up: the picker must not also see it
+                }
+                quit_ = true;
+                break;
+            }
     switch (phase_) {
+        case Phase::Picker: {
+            picker_->update(dt);
+            if (!config_.picker_screen.empty() && picker_->catalogue()) {
+                picker_->open(config_.picker_screen);
+                config_.picker_screen.clear();
+            }
+            for (const InputEvent& e : input) {
+                const Picker::Action a = picker_->handle(e);
+                if (a.kind == Picker::Action::Kind::Quit) quit_ = true;
+                if (a.kind == Picker::Action::Kind::Play) {
+                    start_part(a.part);
+                    break;
+                }
+            }
+            break;
+        }
         case Phase::LoadingScripts:
             load_scripts();
             break;
@@ -302,6 +383,7 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
             break;
         case Phase::Playing:
             for (const InputEvent& e : input) handle(e);
+            if (phase_ != Phase::Playing) break;  // the reader left the part (Esc / Start)
             if (!log_.is_open()) player_->update(dt);  // the log pauses the story (and auto mode), not the sound
             play_audio_events();
             if (player_->status() == Status::Ended) start_script(script_index_ + 1);
@@ -314,6 +396,11 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
 
 void App::render() {
     draw_.clear_all();
+    draw_.clear = {0, 0, 0, 1};
+    if (phase_ == Phase::Picker && picker_) {
+        picker_->draw(draw_, &backdrop_);
+        return;
+    }
     if (phase_ == Phase::Playing && player_) {
         scene_.auto_mode = player_->settings().auto_mode;
         render_scene(*player_, scene_, atlas_, ui_, draw_);

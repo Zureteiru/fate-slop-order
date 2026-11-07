@@ -301,6 +301,13 @@ void AudioDirector::stop_all(double fade) {
     for (Bus b : {Bus::Bgm, Bus::Se, Bus::Voice, Bus::Ui}) mixer_.stop_bus(b, fade);
 }
 
+void AudioDirector::reset(Region region, double fade) {
+    stop_all(fade);
+    prefetch_.clear();
+    clips_.clear();  // sounds still fading out keep their own reference to the bytes
+    region_ = region;
+}
+
 void AudioDirector::set_volumes(const AudioVolumes& v) {
     volumes_ = v;
     auto clamp = [](float x) { return std::clamp(std::isfinite(x) ? x : 1.f, 0.f, 1.f); };

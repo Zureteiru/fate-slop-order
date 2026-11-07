@@ -6,6 +6,7 @@
 namespace vnr::sdl {
 
 using rt::InputEvent;
+using rt::NavDir;
 
 Renderer::~Renderer() {
     for (auto& [id, t] : textures_) SDL_DestroyTexture(t);
@@ -119,7 +120,6 @@ void Renderer::draw(const rt::DrawList& list) {
 namespace {
 std::vector<SDL_GameController*> g_pads;
 constexpr float kWheelStep = 60;    // stage units per wheel notch
-constexpr float kLineStep = 47;     // arrow keys / d-pad: one log line
 constexpr float kPageStep = 400;
 constexpr float kStickSpeed = 900;  // stage units per second at full tilt
 constexpr int kStickDeadzone = 8000;
@@ -129,6 +129,7 @@ void open_pad(int index) {
 }
 
 InputEvent scroll(float dy) { return {InputEvent::Kind::Scroll, {0, dy}, 0}; }
+InputEvent nav(NavDir d) { return {InputEvent::Kind::Nav, {}, static_cast<std::size_t>(d)}; }
 
 Vec2 finger_pos(const SDL_TouchFingerEvent& f, const Renderer& renderer) {
     int w = 0, h = 0;
@@ -197,12 +198,13 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
             switch (e.key.keysym.sym) {
                 case SDLK_SPACE:
                 case SDLK_RETURN:
-                case SDLK_RIGHT:
                 case SDLK_KP_ENTER: out.push_back({InputEvent::Kind::Advance, {}, 0}); break;
-                case SDLK_BACKSPACE:
-                case SDLK_LEFT: out.push_back({InputEvent::Kind::Back, {}, 0}); break;
-                case SDLK_UP: out.push_back(scroll(-kLineStep)); break;
-                case SDLK_DOWN: out.push_back(scroll(kLineStep)); break;
+                case SDLK_BACKSPACE: out.push_back({InputEvent::Kind::Back, {}, 0}); break;
+                // Arrows: the App reads them as advance / back / log scroll while reading, focus moves in the picker.
+                case SDLK_RIGHT: out.push_back(nav(NavDir::Right)); break;
+                case SDLK_LEFT: out.push_back(nav(NavDir::Left)); break;
+                case SDLK_UP: out.push_back(nav(NavDir::Up)); break;
+                case SDLK_DOWN: out.push_back(nav(NavDir::Down)); break;
                 case SDLK_PAGEUP: out.push_back(scroll(-kPageStep)); break;
                 case SDLK_PAGEDOWN: out.push_back(scroll(kPageStep)); break;
                 case SDLK_a: out.push_back({InputEvent::Kind::ToggleAuto, {}, 0}); break;
@@ -226,9 +228,12 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
                 case SDL_CONTROLLER_BUTTON_B: out.push_back({InputEvent::Kind::Back, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_Y: out.push_back({InputEvent::Kind::ToggleAuto, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_X: out.push_back({InputEvent::Kind::OpenLog, {}, 0}); break;
-                case SDL_CONTROLLER_BUTTON_DPAD_UP: out.push_back(scroll(-kLineStep)); break;
-                case SDL_CONTROLLER_BUTTON_DPAD_DOWN: out.push_back(scroll(kLineStep)); break;
-                case SDL_CONTROLLER_BUTTON_START: return false;
+                case SDL_CONTROLLER_BUTTON_DPAD_UP: out.push_back(nav(NavDir::Up)); break;
+                case SDL_CONTROLLER_BUTTON_DPAD_DOWN: out.push_back(nav(NavDir::Down)); break;
+                case SDL_CONTROLLER_BUTTON_DPAD_LEFT: out.push_back(nav(NavDir::Left)); break;
+                case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: out.push_back(nav(NavDir::Right)); break;
+                // Start: back to the chapter list while reading; quits from the picker's home (or without a picker).
+                case SDL_CONTROLLER_BUTTON_START: out.push_back({InputEvent::Kind::Cancel, {}, 0}); break;
                 default: break;
             }
             break;

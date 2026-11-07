@@ -50,6 +50,9 @@ add_library(vnr_runtime STATIC
     runtime/src/image.cpp
     runtime/src/json.cpp
     runtime/src/backlog.cpp
+    runtime/src/catalogue.cpp
+    runtime/src/focus_nav.cpp
+    runtime/src/picker.cpp
     runtime/src/scene_render.cpp
     runtime/src/text.cpp
     runtime/src/ui_skin.cpp
@@ -115,7 +118,7 @@ if(VNR_TARGET STREQUAL "host")
     target_compile_definitions(core_tests PRIVATE VNR_FIXTURE_DIR="${FIXTURES}")
     add_test(NAME core_tests COMMAND core_tests)
 
-    add_executable(runtime_tests tests/core_main.cpp tests/runtime_tests.cpp tests/audio_tests.cpp)
+    add_executable(runtime_tests tests/core_main.cpp tests/runtime_tests.cpp tests/audio_tests.cpp tests/picker_tests.cpp)
     target_include_directories(runtime_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
     target_link_libraries(runtime_tests PRIVATE vnr_runtime)
     target_compile_definitions(runtime_tests PRIVATE VNR_FIXTURE_DIR="${FIXTURES}")

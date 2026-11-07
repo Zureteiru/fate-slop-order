@@ -10,7 +10,9 @@
 #include "vnr/rt/asset_cache.h"
 #include "vnr/rt/audio.h"
 #include "vnr/rt/backlog.h"
+#include "vnr/rt/catalogue.h"
 #include "vnr/rt/draw_list.h"
+#include "vnr/rt/focus_nav.h"
 #include "vnr/rt/platform.h"
 #include "vnr/rt/scene_render.h"
 #include "vnr/rt/text.h"
@@ -19,16 +21,18 @@ namespace vnr::rt {
 
 struct InputEvent {
     enum class Kind {
-        Advance,      // Space / Enter / A button (closes the log)
-        Back,         // right click / Backspace / B button (closes the log)
+        Advance,      // Space / Enter / A button (closes the log; picks the focused button in the picker)
+        Back,         // right click / Backspace / B button (closes the log; up one screen in the picker)
+        Nav,          // arrow keys / d-pad: `index` is a NavDir. Reading: right = advance, left = back,
+                      // up / down scroll the log. Picker: moves the focus.
         Pointer,      // press at `pos` (stage units): LOG / AUTO button, a choice, otherwise advances
         PointerMove,  // the pressed pointer moved to `pos` (drags the log)
         PointerUp,    // released at `pos` (a tap without a drag closes the log)
-        Scroll,       // scroll the log by `pos.y` stage units (+ newer, - older): wheel, d-pad, stick
+        Scroll,       // scroll the log / picker by `pos.y` stage units (+ newer / down): wheel, PgUp/PgDn, stick
         Choose,       // pick choice `index` directly (keyboard 1-9, d-pad + A)
         ToggleAuto,   // `A` key / Y button
         OpenLog,      // `L` key / X button
-        Cancel,       // Esc: closes the log, otherwise asks to quit
+        Cancel,       // Esc / Start: closes the log; leaves the part for the picker (quits without one)
         SkipScript,
         VolumeDown,   // `-` key: master volume -10%
         VolumeUp,     // `=` key: master volume +10%
@@ -46,16 +50,25 @@ inline constexpr const char* kSettingsKey = "settings.json";
 // The choice click (tools/install_choice_sound.sh), in the user folder. Never committed.
 inline constexpr const char* kChoiceSoundKey = "sfx/choice.mp3";
 inline constexpr float kChoiceSoundVolume = 0.5f;
+// Up / down while reading scroll the log by one line (as the arrow keys always did).
+inline constexpr float kNavScrollStep = 47;
 
 struct AppConfig {
     Region region = Region::NA;
     std::vector<std::string> script_ids;  // one reader "part": scripts played back to back
     Settings settings;
+    // Start on the chapter picker instead of `script_ids` (the parts then come from the catalogue).
+    bool picker = false;
+    std::string picker_screen;  // optional first screen: "home", "chapter=<id>", "end=<id>:<section>"
 };
+
+class Picker;
 
 class App {
 public:
-    enum class Phase { LoadingScripts, LoadingAssets, Playing, Finished };
+    // Picker: the chapter picker (only with AppConfig::picker). Finished: the part ended and there is
+    // no picker to go back to.
+    enum class Phase { Picker, LoadingScripts, LoadingAssets, Playing, Finished };
 
     App(Platform& platform, AppConfig config);
     ~App();
@@ -75,6 +88,11 @@ public:
     bool auto_mode() const { return scene_.auto_mode; }  // as of the last frame drawn
     // Sound: the platform's audio callback calls audio().render() (thread-safe).
     AudioDirector& audio() { return audio_; }
+    // The chapter picker, when the App was started with one (null otherwise).
+    const Picker* picker() const { return picker_.get(); }
+    const AppConfig& config() const { return config_; }  // region and scripts of the current part
+    // Plays a part now (the picker does this; tests too).
+    void start_part(const PartChoice& part);
 
 private:
     Platform& platform_;
@@ -96,6 +114,9 @@ private:
     DrawList draw_;
     Backlog log_;
     bool quit_ = false;
+    std::unique_ptr<Picker> picker_;
+    PartChoice part_;             // the part playing (picker mode)
+    DrawList backdrop_;           // the part's last frame, under the end card
 
     Phase phase_ = Phase::LoadingScripts;
     std::vector<std::string> script_text_;
@@ -106,6 +127,7 @@ private:
     std::size_t assets_total_ = 0;
 
     std::string base_figure_url(int figure_id) const;
+    void leave_part(bool finished);
     void load_scripts();
     void request_assets();
     void finish_assets();
