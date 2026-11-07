@@ -139,7 +139,8 @@ instead, for the cache too, and the install scripts below default to it. It is g
 for anything started from the Claude desktop app).
 
 vnreader draws the story screen with the game's own pieces: the text box, the name tab, the choice
-frame and the spinning "next" marker. They come from two sheets of the Spriters Resource
+frame and the LOG / AUTO buttons. (The spinning "next" marker on sheet 030 is deliberately not drawn:
+the user asked for it to be left out.) They come from two sheets of the Spriters Resource
 "Fate/Grand Order → Miscellaneous → User Interface" rip (`003.png`, `030.png`). The sheets are game art,
 so they are **never committed and never downloaded by the app**. Each user installs them once:
 
@@ -172,17 +173,23 @@ With no argument the script fetches them from fatecafe.com (about 1.6 MB); with 
 `<name>.png` files from there instead. Each file's SHA-256 is checked, and they go to
 `<user folder>/wipes/`. Without them the app draws built-in wipes of the same shapes.
 
-The layout follows the game, not Fate Café, and was matched against 1080p NA gameplay video to
-within 1–2 px (`--smoke 0 --until "text"` captures the frame for a given line):
+The layout follows the game, not Fate Café. It was matched against 1080p NA gameplay video to
+within 1–2 px, then re-checked on 2026-11-07 against a game frame the user supplied (box opacity,
+name tab, line pitch, wrap edge, AUTO position). The user confirmed the result, so don't re-measure
+without a new reference from them (`--smoke 0 --until "text"` captures the frame for a given line):
 
 - **View:** the game shows the top 576 rows of the 1344×626 stage (the rest is background bleed), at
   least the 1024-wide safe area. The window opens at 1024×576; wider windows show more at the sides.
-- **Text box:** 984×139 (the sheet piece squashed vertically), 12 px above the bottom of the view.
-- **Name tab:** 283×45, drawn over the box's top-left corner, its point sticking out to the left.
-- **Text:** FOT-Skip Std B at 28.7 px (names 29 px, choices 28.5 px), two lines 48 apart.
+- **Text box:** 984×139 (the sheet piece squashed vertically), 12 px above the bottom of the view, at
+  0.82 opacity (also the name tab and the choice frames; Fate Café uses 82% too).
+- **Name tab:** 283×51 (native height) at x 155.5, drawn over the box's top-left corner, its point sticking
+  out to the left; the name starts 30.5 in.
+- **Text:** FOT-Skip Std B at 28.7 px (names 30.5 px, choices 28.5 px), two lines 48.5 apart. Lines start at
+  x 227.5 and wrap at 866 wide (right limit x 1093.5, just short of LOG / AUTO), which reproduces the game's breaks.
 - **Choices:** 777×71 frames, 30 px apart, the dialogue stays visible underneath.
 - **LOG and AUTO:** inside the box's right edge, both centred on x 1139.2; LOG's bar at y 446.1 (1.14× the
-  sheet piece), AUTO's box at y 486.3 (1.10×). AUTO uses the outlined piece when off and the cyan one when on.
+  sheet piece), AUTO's box at y 486.3 (1.10×). AUTO uses the outlined piece when off and the cyan one when on; both boxes share one
+  centre, so it doesn't jump when toggled.
   Taps on them don't advance the text.
 - **Log screen:** past lines with speaker names over the dimmed story screen (the story pauses), with a
   scrollbar on the right. It follows the game loosely and wasn't measured.
@@ -193,8 +200,6 @@ within 1–2 px (`--smoke 0 --until "text"` captures the frame for a given line)
 - **Voice replay from the LOG screen:** the backlog keeps each line's voice, but tapping it does nothing yet.
 - **Picker extras:** Fate Café's Events / Interludes / Story Mode tabs, the map and summary views, search,
   filters, "Mark read" buttons and resuming at the exact line.
-- **Wipes:** wipe patterns are drawn as an even fade.
-- **Effects:** particle effects are not drawn.
 - **Sub-camera extras:** split-screen windows (`subCameraFilter maskEdge`) are clipped with a hard edge (the
   script's edge softness is ignored); `subCameraRoll` and `subBlur` are not supported.
 - **Controller choices:** a controller cannot move between choice buttons yet (the picker's `FocusNav` is

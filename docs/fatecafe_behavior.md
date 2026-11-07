@@ -36,6 +36,7 @@ The user's exceptions, which override the rest of the spec:
 6. **Look:** the story screen matches the real game (UI art from the game's sheets, FOT-Skip Std B, layout measured
    from 1080p gameplay video; see apps/README.md), not Fate Café's layout.
 7. **No SKIP button** on the story screen.
+8. **No spinning "next" marker** (advance hint) on the story screen (user, 2026-11-07).
 
 ## Reference chapters
 

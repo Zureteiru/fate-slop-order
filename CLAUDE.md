@@ -26,6 +26,13 @@ about 30 s, ~15 lines of output). While iterating, run one suite:
 `bash tests/run.sh runtime_tests` (or core_tests, dict_tests).
 Windows app: see apps/README.md (`-DVNR_TARGET=desktop`, MSVC).
 
+Status (2026-11-07), already done, don't redo or re-check: the core engine, audio, chapter picker,
+sub-camera layers and masks, and the whole transitions-and-effects plan (wipes, wipeFilter, pictureFrame,
+charaSpecialEffect, roll / roll axis y, gray / sepia / blur filters, hologram scanlines, title cards, named
+effects). The story-screen layout was re-measured against a game frame and confirmed by the user. The
+portable `userdata/` folder holds all user files. There is no open task: wait for the user to name the
+next one rather than picking items from gaps lists yourself.
+
 Player spec: docs/fatecafe_behavior.md. Fate Café is the default: copy its
 behaviour, and rip its assets 1:1 when needed. The "vnreader decisions"
 section at the top of the spec lists the user's exceptions; those win.
