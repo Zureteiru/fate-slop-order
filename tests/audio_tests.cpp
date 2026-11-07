@@ -275,7 +275,7 @@ TEST(director_voice_end_reports_voice_finished_once) {
     CHECK(env.audio.take_voice_finished());
     CHECK(!env.audio.take_voice_finished());
     CHECK(env.logged("voice 100100_0_A010 playing"));
-    CHECK(env.http.requests.at(0).url.find("/Audio/Servants_100100/0_A010.mp3") != std::string::npos);
+    CHECK(env.http.requests.at(0).url.find("/Audio/ChrVoice_100100/0_A010.mp3") != std::string::npos);  // non-battle line: ChrVoice first
 }
 
 TEST(director_new_voice_cuts_old_without_finishing_it) {

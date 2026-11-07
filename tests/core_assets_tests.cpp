@@ -23,8 +23,17 @@ TEST(asset_urls) {
     CHECK_EQ(se_folder("ad271"), std::string("SE"));
     const auto v = voice_url("100100_0_A010", Region::JP);
     REQUIRE(v.has_value());
-    CHECK_EQ(v->primary, std::string("https://static.atlasacademy.io/JP/Audio/Servants_100100/0_A010.mp3"));
-    CHECK_EQ(v->fallback, std::string("https://static.atlasacademy.io/JP/Audio/ChrVoice_100100/0_A010.mp3"));
+    CHECK_EQ(v->primary, std::string("https://static.atlasacademy.io/JP/Audio/ChrVoice_100100/0_A010.mp3"));
+    CHECK_EQ(v->fallback, std::string("https://static.atlasacademy.io/JP/Audio/Servants_100100/0_A010.mp3"));
+    const auto battle = voice_url("700100_0_B160", Region::NA);  // battle line: Servants first
+    REQUIRE(battle.has_value());
+    CHECK_EQ(battle->primary, std::string("https://static.atlasacademy.io/NA/Audio/Servants_700100/0_B160.mp3"));
+    CHECK_EQ(battle->fallback, std::string("https://static.atlasacademy.io/NA/Audio/ChrVoice_700100/0_B160.mp3"));
+    const auto np = voice_url("NP_700900_1", Region::NA);
+    REQUIRE(np.has_value());
+    CHECK_EQ(np->primary, std::string("https://static.atlasacademy.io/NA/Audio/NoblePhantasm_700900/NP_700900_1.mp3"));
+    CHECK(np->fallback.empty());
+    CHECK(!voice_url("NP_x", Region::NA).has_value());
     CHECK(!voice_url("novoice", Region::NA).has_value());
     const AssetUrl mv = movie_url("Movie/op_01", Region::NA);
     CHECK_EQ(mv.primary, std::string("https://static.atlasacademy.io/NA/Movie/op_01.mp4"));

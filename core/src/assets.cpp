@@ -64,7 +64,17 @@ std::optional<AssetUrl> voice_url(std::string_view voice_id, Region r) {
     const std::size_t us = voice_id.find('_');
     if (us == std::string_view::npos || us == 0 || us + 1 >= voice_id.size()) return std::nullopt;
     const std::string a(voice_id.substr(0, us)), b(voice_id.substr(us + 1));
-    return AssetUrl{base(r) + "Audio/Servants_" + a + "/" + b + ".mp3", base(r) + "Audio/ChrVoice_" + a + "/" + b + ".mp3"};
+    if (a == "NP") {  // Noble Phantasm shout: NP_<svt>_<n> -> NoblePhantasm_<svt>/NP_<svt>_<n>
+        const std::size_t us2 = b.find('_');
+        if (us2 == std::string::npos || us2 == 0) return std::nullopt;
+        return AssetUrl{base(r) + "Audio/NoblePhantasm_" + b.substr(0, us2) + "/" + std::string(voice_id) + ".mp3", {}};
+    }
+    // Atlas DB's rule: battle lines (last part "B...") live in Servants_, the rest in ChrVoice_.
+    const std::string last = b.substr(b.rfind('_') == std::string::npos ? 0 : b.rfind('_') + 1);
+    const std::string servants = base(r) + "Audio/Servants_" + a + "/" + b + ".mp3";
+    const std::string chr = base(r) + "Audio/ChrVoice_" + a + "/" + b + ".mp3";
+    if (!last.empty() && last[0] == 'B') return AssetUrl{servants, chr};
+    return AssetUrl{chr, servants};
 }
 
 std::string tvoice_url(std::string_view folder, std::string_view file, Region r) {

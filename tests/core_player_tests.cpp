@@ -153,9 +153,62 @@ TEST(player_audio_events) {
     r.player.advance();
     r.player.advance();
     ev = r.player.drain_audio();
-    CHECK(has_kind(ev, AudioEvent::Kind::VoiceStop));  // leaving the line stops its voice
+    CHECK(!has_kind(ev, AudioEvent::Kind::VoiceStop));  // the voice plays on past its line
     CHECK(has_kind(ev, AudioEvent::Kind::BgmStop));
     CHECK(r.player.bgm().empty());
+    r.player.advance();
+    r.player.back();
+    CHECK(has_kind(r.player.drain_audio(), AudioEvent::Kind::VoiceStop));  // Back stops it
+}
+
+TEST(player_voice_plays_where_it_appears) {
+    // An NP shout followed by a wait plays at once and is not the next line's voice.
+    Run r("[voice NP_700900_1]\n[wt 1.5]\n＠A\nx\n[k]\n[voice 1_a]\n＠B\ny\n[k]\n");
+    auto ev = r.player.drain_audio();
+    REQUIRE(ev.size() == 1);
+    CHECK(ev[0].kind == AudioEvent::Kind::VoicePlay);
+    CHECK_EQ(ev[0].name, std::string("NP_700900_1"));
+    CHECK(r.player.status() == Status::Waiting);
+    drive::time_until(r.player, [&] { return drive::at_say(r.player, 3); });
+    CHECK(r.player.backlog().back().voice_name.empty());
+    CHECK(r.player.drain_audio().empty());  // nothing replayed at the line
+    r.player.advance();
+    r.player.advance();
+    // A [voice] right before a line is that line's voice (for the backlog).
+    CHECK(drive::at_say(r.player, 7));
+    CHECK_EQ(r.player.backlog().back().voice_name, std::string("1_a"));
+    ev = r.player.drain_audio();
+    REQUIRE(ev.size() == 1);
+    CHECK_EQ(ev[0].name, std::string("1_a"));
+}
+
+TEST(player_wait_voice_after_k_waits) {
+    Run r("[voice 1_a]\n＠\nv\n[k]\n[wait voice]\n＠\nnext\n[k]\n");
+    r.player.advance();
+    r.player.advance();
+    CHECK(r.player.status() == Status::Waiting);  // the voice outlives its line
+    r.player.update(1.0);
+    CHECK(r.player.status() == Status::Waiting);
+    r.player.voice_finished();
+    r.player.update(drive::kDt);
+    CHECK(drive::at_say(r.player, 6));
+
+    Run capped("[voice 1_a]\n＠\nv\n[k]\n[wait voice]\n＠\nnext\n[k]\n");
+    capped.player.advance();
+    capped.player.advance();
+    const double t = drive::time_until(capped.player, [&] { return drive::at_say(capped.player, 6); });
+    CHECK_NEAR(t, 12.0, 3 * drive::kDt);  // never hangs: the cap releases it
+}
+
+TEST(player_voice_stop_and_inline_voice) {
+    Run r("[voice 1_a]\n＠\nv[voice 1_b]w\n[k]\n[voiceStop]\n＠\nnext\n[k]\n");
+    r.player.advance();  // finish typing: runs the inline [voice]
+    auto ev = r.player.drain_audio();
+    REQUIRE(ev.size() == 2);
+    CHECK_EQ(ev[1].name, std::string("1_b"));
+    CHECK_EQ(r.player.backlog().back().voice_name, std::string("1_b"));
+    r.player.advance();
+    CHECK(has_kind(r.player.drain_audio(), AudioEvent::Kind::VoiceStop));
 }
 
 TEST(player_wait_voice_and_auto) {

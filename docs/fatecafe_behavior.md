@@ -21,6 +21,13 @@ This spec describes Fate Café. vnreader does **not** copy its shortcuts:
 2. **Wipe transitions:** use the real game wipe textures if a source can be found, the same way other assets come from Atlas. Otherwise, generate them in code.
 3. **Named particle effects:** rebuild them all. The name→program table in §6 is the starting list.
 4. **Visual reference for effects:** use frames from YouTube chapter playthroughs.
+5. **Voices (2026-11-07):**
+   - `[voice X]` plays where it appears, as Atlas DB does (Fate Café holds it for the next beat). It counts as the
+     next line's voice in the backlog only when no wait, choice or movie comes in between.
+   - A voice is **not** cut when the reader advances: it plays to its end, so a `[wait voice]` after `[k]` really waits
+     (up to 12 s). It stops on `[voiceStop]`, Back, skip, or a new voice.
+   - `NP_<svt>_<n>` lives at `Audio/NoblePhantasm_<svt>/NP_<svt>_<n>.mp3`. Other ids try `Servants_` first when the last
+     part starts with `B` (battle lines), otherwise `ChrVoice_` first.
 
 ## Reference chapters
 

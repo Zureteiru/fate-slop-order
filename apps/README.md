@@ -82,8 +82,9 @@ BGM, sound effects and voices play through a software mixer in `runtime/` (`audi
   bytes. No OS codecs, so it sounds the same on every target.
 - **Buses:** BGM (one track; a new one crossfades, the same one keeps playing), SE (several at once), voice
   (a new line cuts the previous voice). Fades, per-sound volume, loops and stop-all follow the script.
-- **Voices:** when a voice ends (or can't load) the App calls `Player::voice_finished()`, which releases
-  `[wait voice]` and lets AUTO move on.
+- **Voices:** `[voice]` plays where it appears and is not cut when you tap past its line (it stops at its end,
+  on `[voiceStop]`, Back, or the next voice). When it ends (or can't load) the App calls
+  `Player::voice_finished()`, which releases `[wait voice]` and lets AUTO move on.
 - **Back:** the Player restores that line's BGM; SEs from the later line fade out and old SEs are not replayed.
 - **LOG screen:** the story pauses, the sound doesn't.
 - **Threads:** the device callback calls `AudioDirector::render()`, which locks the mixer; everything else runs on

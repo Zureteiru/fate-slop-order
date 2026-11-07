@@ -116,6 +116,7 @@ void Player::run() {
             begin_say(*say);
         } else if (std::get_if<ChoiceOp>(&in)) {
             history_.push_back({pc_, stage_, bgm_, backlog_.size()});
+            unclaimed_voice_.clear();
             status_ = Status::AwaitChoice;
         } else if (const auto* j = std::get_if<JumpOp>(&in)) {
             pc_ = j->target;
@@ -170,6 +171,7 @@ void Player::start_wait(double seconds, WaitCat cat) {
     wait_timer_ = seconds;
     wait_cat_ = cat;
     status_ = Status::Waiting;
+    unclaimed_voice_.clear();  // time passes: a [voice] before this is not the next line's voice
 }
 
 void Player::begin_say(const SayOp& op) {
@@ -189,12 +191,10 @@ void Player::begin_say(const SayOp& op) {
         voice_active_ = true;
         entry.voice_name = op.tvoice_file;
         entry.voice_folder = op.tvoice_folder;
-    } else if (!pending_voice_.empty()) {
-        emit({AudioEvent::Kind::VoicePlay, pending_voice_, {}, 0, 1, false});
-        voice_active_ = true;
-        entry.voice_name = pending_voice_;
+    } else if (!unclaimed_voice_.empty()) {  // [voice] right before the line: already playing
+        entry.voice_name = unclaimed_voice_;
     }
-    pending_voice_.clear();
+    unclaimed_voice_.clear();
     backlog_.push_back(std::move(entry));
 
     update_talk_focus(op.speaker_code, op.speaker.plain());
@@ -242,7 +242,7 @@ void Player::finish_typing(bool skipping) {
     inline_cat_ = WaitCat::None;
 }
 
-void Player::leave_say() {
+void Player::stop_voice() {
     if (voice_active_) {
         emit({AudioEvent::Kind::VoiceStop, {}, {}, 0, 1, false});
         voice_active_ = false;
@@ -256,8 +256,7 @@ bool Player::advance() {
         auto_timer_ = 0;
         return true;
     }
-    if (status_ == Status::AwaitAdvance) {
-        leave_say();
+    if (status_ == Status::AwaitAdvance) {  // the voice plays on (a later [wait voice] waits for it)
         ++pc_;
         status_ = Status::Running;
         run();
@@ -287,7 +286,8 @@ bool Player::back() {
     Snapshot snap = std::move(history_.back());
     history_.pop_back();
 
-    leave_say();
+    stop_voice();
+    unclaimed_voice_.clear();
     const std::string bgm_before = bgm_;
     stage_ = std::move(snap.stage);
     stage_.finish_all();
@@ -314,7 +314,7 @@ bool Player::back() {
 }
 
 void Player::skip() {
-    leave_say();
+    stop_voice();
     pc_ = prog_.code.size() - 1;
     status_ = Status::Ended;
 }
@@ -852,8 +852,19 @@ void Player::exec(const Command& c, bool inline_cmd, bool skipping) {
         emit({AudioEvent::Kind::SeStopAll, {}, {}, num(0, 0), 1, false});
         return;
     }
-    if (n == "voice") { pending_voice_ = c.arg(0); return; }
-    if (n == "voiceStop") { leave_say(); return; }
+    if (n == "voice") {  // plays where it appears (Atlas DB does the same)
+        if (!c.has(0)) return;
+        emit({AudioEvent::Kind::VoicePlay, c.arg(0), {}, 0, 1, false});
+        voice_active_ = true;
+        if (inline_cmd && say_ && !backlog_.empty()) {
+            backlog_.back().voice_name = c.arg(0);
+            backlog_.back().voice_folder.clear();
+        } else {
+            unclaimed_voice_ = c.arg(0);
+        }
+        return;
+    }
+    if (n == "voiceStop") { stop_voice(); return; }
     if (n == "criMovie" || n == "movie" || n == "moviePlay" || n == "playMovie") {
         if (!c.has(0) || skipping) return;
         std::string id = c.arg(0);
@@ -862,6 +873,7 @@ void Player::exec(const Command& c, bool inline_cmd, bool skipping) {
         emit({AudioEvent::Kind::Movie, id, {}, 0, 1, false});
         if (status_ != Status::Typing) {
             waiting_movie_ = true;
+            unclaimed_voice_.clear();
             status_ = Status::Waiting;
         }
         return;

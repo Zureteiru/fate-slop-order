@@ -36,7 +36,9 @@ std::string image_url(std::string_view name, Region r);            // Image/<nam
 AssetUrl bgm_url(std::string_view name, Region r);
 std::string se_folder(std::string_view name);                      // Battle / ResidentSE / SE_<n> / SE
 std::string se_url(std::string_view name, Region r, std::string_view folder = {});
-std::optional<AssetUrl> voice_url(std::string_view voice_id, Region r);  // "A_B" -> Servants_A/B, ChrVoice_A/B
+// "A_B" -> Servants_A/B and ChrVoice_A/B (Servants first when the last part starts with B);
+// "NP_<svt>_<n>" -> NoblePhantasm_<svt>/NP_<svt>_<n>.
+std::optional<AssetUrl> voice_url(std::string_view voice_id, Region r);
 std::string tvoice_url(std::string_view folder, std::string_view file, Region r);
 AssetUrl movie_url(std::string_view movie_id, Region r);  // fallback = the other region
 std::string svt_script_url(const std::vector<int>& figure_ids, Region r);

@@ -119,7 +119,7 @@ private:
 
     // audio
     std::string bgm_;
-    std::string pending_voice_;
+    std::string unclaimed_voice_;  // [voice] played since the last step that took time: the next line's voice
     bool voice_active_ = false;
     bool mute_events_ = false;
     std::vector<AudioEvent> audio_;
@@ -131,7 +131,7 @@ private:
     void begin_say(const SayOp& op);
     void finish_typing(bool skipping);
     void step_typing(double dt);
-    void leave_say();
+    void stop_voice();
     void exec(const Command& c, bool inline_cmd, bool skipping);
     void start_wait(double seconds, WaitCat cat);
     void update_talk_focus(const std::string& speaker_code, const std::string& speaker_name);
