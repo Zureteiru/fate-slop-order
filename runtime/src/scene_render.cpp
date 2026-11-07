@@ -59,8 +59,14 @@ Color element_tint(const Element& e, float opacity) {
     return c;
 }
 
+// Where a masked layer wants a figure's face (Fate Café): its face point on the window's centre row,
+// and on its centre column too for narrow windows. NaN = keep the script's position on that axis.
+struct FaceAnchor {
+    float x = NAN, y = NAN;
+};
+
 void draw_figure(int figure_id, int face, Vec2 offset, float scale, Color tint, const SceneAssets& a,
-                 const StageTransform& t, DrawList& out) {
+                 const StageTransform& t, DrawList& out, FaceAnchor anchor = {}) {
     const TextureAsset* tex = a.cache->texture(figure_url(figure_id, a.region));
     if (!tex) return;
     FigureInfo info;
@@ -69,7 +75,16 @@ void draw_figure(int figure_id, int face, Vec2 offset, float scale, Color tint, 
     const Vec2 origin = body_origin(info.meta, info.body_width);
     // Element offsets are y-up; the stage is y-down. Scale grows from the body centre.
     const float bw = static_cast<float>(info.body_width), bh = static_cast<float>(std::min(info.body_height, tex->height));
-    const Vec2 centre{origin.x + bw / 2 + offset.x, origin.y + bh / 2 - offset.y};
+    Vec2 centre{origin.x + bw / 2 + offset.x, origin.y + bh / 2 - offset.y};
+    if (!std::isnan(anchor.y) || !std::isnan(anchor.x)) {
+        // the face point in body pixels: 72% down the face, or 384 px down a figure without face data
+        const bool has_face = info.meta.face_x > 0 || info.meta.face_y > 0;
+        const float fsize = static_cast<float>(info.meta.face_w);
+        const float fy = has_face ? static_cast<float>(info.meta.face_y) + fsize * 0.72f : 384.f;
+        const float fx = has_face ? static_cast<float>(info.meta.face_x) + fsize / 2 : bw / 2;
+        if (!std::isnan(anchor.y)) centre.y = anchor.y - (fy - bh / 2) * scale;
+        if (!std::isnan(anchor.x)) centre.x = anchor.x - (fx - bw / 2) * scale;
+    }
     auto place = [&](float x, float y, float w, float h) -> Rect {  // body-local -> stage
         return {centre.x + (x - bw / 2) * scale, centre.y + (y - bh / 2) * scale, w * scale, h * scale};
     };
@@ -100,11 +115,21 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
         const Element* e = item.e;
         const LayerPlacement& lp = item.lp;
         const float opacity = e->opacity.value() * lp.opacity;
-        const float scale = e->scale.value() * lp.scale;
+        // maskEdge layers are one surface (Fate Café): the sprites keep their own positions, the surface
+        // is clipped to the mask, scaled about the stage centre and moved by offset x 626/1024 (along y
+        // only for full-width masks); faces are anchored to the mask's window.
+        const bool surface = lp.scale_position;
+        const LayerMask* mask = nullptr;
+        if (surface && !lp.mask.empty()) {
+            const auto mi = a.masks.find(lp.mask);
+            if (mi != a.masks.end()) mask = &mi->second;
+        }
+        const float scale = surface ? e->scale.value() : e->scale.value() * lp.scale;
         Vec2 offset = e->pos.value();
-        if (lp.scale_position) offset = {offset.x * lp.scale, offset.y * lp.scale};
-        offset.x += lp.offset.x;
-        offset.y += lp.offset.y;
+        if (!surface) {
+            offset.x += lp.offset.x;
+            offset.y += lp.offset.y;
+        }
         const Vec2 shake = e->shake.offset();
         offset.x += shake.x;
         offset.y -= shake.y;
@@ -114,15 +139,38 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
             offset.y += e->attack_offset.y * k;
         }
         const Color tint = element_tint(*e, opacity);
+        // Surfaces draw into a scratch list in surface coordinates first.
+        DrawList local;
+        DrawList& target = surface ? local : out;
+        const StageTransform& tt = surface ? StageTransform{} : t;
         if (e->kind == ElementKind::Chara) {
-            draw_figure(e->figure_id, e->face, offset, scale, tint, a, t, out);
+            FaceAnchor anchor;
+            if (mask) {
+                anchor.y = mask->band_center;
+                if (mask->narrow) anchor.x = mask->band_center_x;
+            }
+            draw_figure(e->figure_id, e->face, offset, scale, tint, a, tt, target, anchor);
         } else {
             const std::string url = e->kind == ElementKind::Scene ? background_url(e->asset, a.region) : image_url(e->asset, a.region);
             const TextureAsset* tex = a.cache->texture(url);
             if (!tex) continue;
             const float w = static_cast<float>(tex->width) * scale, h = static_cast<float>(tex->height) * scale;
-            push_quad(out, tex->id, {0, 0, static_cast<float>(tex->width), static_cast<float>(tex->height)},
-                      {(kW - w) / 2 + offset.x, (kH - h) / 2 - offset.y, w, h}, tint, t);
+            push_quad(target, tex->id, {0, 0, static_cast<float>(tex->width), static_cast<float>(tex->height)},
+                      {(kW - w) / 2 + offset.x, (kH - h) / 2 - offset.y, w, h}, tint, tt);
+        }
+        if (!surface) continue;
+        const Vec2 move{lp.offset.x * kMaskOffsetScale, (mask && mask->full_width) ? -lp.offset.y * kMaskOffsetScale : 0.f};
+        auto to_stage = [&](Vec2 p) {
+            return t.apply({kW / 2 + (p.x - kW / 2) * lp.scale + move.x, kH / 2 + (p.y - kH / 2) * lp.scale + move.y});
+        };
+        for (const Quad& q : local.quads) {
+            std::vector<Quad> parts;
+            if (mask) parts = clip_quad(q, mask->polygon);
+            else parts.push_back(q);
+            for (Quad& p : parts) {
+                for (Vec2& v : p.pos) v = to_stage(v);
+                out.quads.push_back(p);
+            }
         }
     }
     if (st.communication) {  // hologram figure: tinted, left of centre

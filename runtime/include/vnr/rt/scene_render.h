@@ -9,6 +9,7 @@
 #include "vnr/player.h"
 #include "vnr/rt/asset_cache.h"
 #include "vnr/rt/draw_list.h"
+#include "vnr/rt/layer_mask.h"
 #include "vnr/rt/text.h"
 #include "vnr/rt/ui_skin.h"
 
@@ -28,6 +29,7 @@ struct SceneAssets {
     UiSkin skin;       // the game's story UI art, when the user supplied the sheets
     double clock = 0;  // seconds since start, for UI animation (the "next" marker)
     bool auto_mode = false;  // AUTO button lit
+    std::map<std::string, LayerMask> masks;  // subCameraFilter mask images, by name (decoded by the App)
 };
 
 // Layout of the story UI (stage units), shared with input hit-testing. Every number is measured

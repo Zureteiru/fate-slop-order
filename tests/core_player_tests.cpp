@@ -297,7 +297,7 @@ TEST(player_mask_edge_layers_move_as_a_group_and_subCameraOff_hides_them) {
     CHECK_NEAR(p.scale, 2, 1e-6);
     CHECK_NEAR(p.offset.x, -400, 1e-4);
     CHECK_NEAR(p.offset.y, -150, 1e-4);
-    CHECK_NEAR(p.order, 2, 1e-6);  // #B
+    CHECK_NEAR(p.order, kSurfaceLayerOrder + 2, 1e-6);  // #B, a maskEdge surface: above the main stage
     CHECK_EQ(st.sub_layers.at("#B").mask, "cut359_mask16");
     r.player.advance();
     REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "b"); }) >= 0);

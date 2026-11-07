@@ -151,10 +151,12 @@ struct LayerPlacement {
     Vec2 offset;                  // added to the element position (y up)
     float scale = 1;              // multiplies the element scale
     bool scale_position = false;  // maskEdge layers move as one group: the position scales too
+    std::string mask;             // maskEdge layers: the mask image name (Atlas Image/<name>)
     float opacity = 1;
     float order = 50;             // draw order: main characters 50, moved layers by depth / letter
 };
 inline constexpr float kMainLayerOrder = 50;
+inline constexpr float kSurfaceLayerOrder = 100;  // + depth / letter: maskEdge surfaces, above the main stage
 
 struct Stage {
     std::string background;       // scene id

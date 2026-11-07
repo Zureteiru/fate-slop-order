@@ -49,6 +49,7 @@ add_library(vnr_runtime STATIC
     runtime/src/draw_list.cpp
     runtime/src/image.cpp
     runtime/src/json.cpp
+    runtime/src/layer_mask.cpp
     runtime/src/backlog.cpp
     runtime/src/catalogue.cpp
     runtime/src/focus_nav.cpp

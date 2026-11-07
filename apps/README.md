@@ -178,8 +178,8 @@ within 1–2 px (`--smoke 0 --until "text"` captures the frame for a given line)
   filters, "Mark read" buttons and resuming at the exact line.
 - **Wipes:** wipe patterns are drawn as an even fade.
 - **Effects:** particle effects are not drawn.
-- **Sub-camera masks:** sub layers (`charaLayer C sub #A`) show, move and hide as the script says, but the
-  `subCameraFilter maskEdge` shapes (Atlas `Image/cut359_mask*`) are not applied, so split-screen windows draw unclipped.
+- **Sub-camera extras:** split-screen windows (`subCameraFilter maskEdge`) are clipped with a hard edge (the
+  script's edge softness is ignored); `subCameraRoll` and `subBlur` are not supported.
 - **Controller choices:** a controller cannot move between choice buttons yet (the picker's `FocusNav` is
   meant for it). Use the 1–9 keys or the mouse.
 - **Story buttons:** SKIP and hide-message are not drawn (SKIP is left out on purpose).

@@ -78,6 +78,8 @@ void App::start_part(const PartChoice& part) {
     assets_total_ = 0;
     script_index_ = 0;
     scene_.figures.clear();
+    scene_.masks.clear();
+    mask_names_.clear();
     scene_.region = part.region;
     log_.close();
     backdrop_.clear_all();
@@ -118,7 +120,7 @@ void App::load_scripts() {
 
 void App::request_assets() {
     std::set<int> figures;
-    std::set<std::string> backgrounds, images;
+    std::set<std::string> backgrounds, images, masks;
     const bool female = config_.settings.text.gender == Gender::Female;
     for (const Program& p : programs_) {
         for (const Instr& in : p.code) {
@@ -133,6 +135,7 @@ void App::request_assets() {
             else if (n == "masterScene") backgrounds.insert(female && c.has(1) ? c.arg(1) : c.arg(0));
             else if (n == "sceneSet") backgrounds.insert(c.arg(1));
             else if (n == "imageSet" || n == "verticalImageSet" || n == "horizontalImageSet" || n == "imageChange") images.insert(c.arg(1));
+            else if (n == "subCameraFilter" && c.arg(1) == "maskEdge" && !c.arg(2).empty()) masks.insert(c.arg(2));
         }
     }
     figures.erase(0);
@@ -148,6 +151,8 @@ void App::request_assets() {
         if (!b.empty()) cache_.request_texture(background_url(b, config_.region));
     for (const auto& i : images)
         if (!i.empty()) cache_.request_texture(image_url(i, config_.region));
+    mask_names_.assign(masks.begin(), masks.end());
+    for (const auto& m : mask_names_) cache_.request_bytes(image_url(m, config_.region));  // decoded on the CPU
     assets_total_ = cache_.pending();
 }
 
@@ -180,6 +185,17 @@ void App::finish_assets() {
                 platform_.log.write("svtScript JSON could not be parsed");
             }
         }
+    }
+    for (const auto& name : mask_names_) {
+        const std::vector<std::uint8_t> bytes = cache_.take_bytes(image_url(name, config_.region));
+        Image img;
+        if (bytes.empty() || !decode_image(bytes, img)) {
+            platform_.log.write("mask " + name + " could not be loaded; that layer draws unclipped");
+            continue;
+        }
+        LayerMask m = build_layer_mask(img);
+        if (!m.ok) platform_.log.write("mask " + name + " has no window; that layer draws unclipped");
+        else scene_.masks[name] = std::move(m);
     }
     for (int f : figure_ids_) {
         FigureInfo& fi = scene_.figures[f];

@@ -102,7 +102,9 @@ void Renderer::draw(const rt::DrawList& list) {
                           static_cast<Uint8>(std::clamp(q.color.a, 0.f, 1.f) * 255)};
         const float u0 = q.src.x / size.x, v0 = q.src.y / size.y;
         const float u1 = (q.src.x + q.src.w) / size.x, v1 = (q.src.y + q.src.h) / size.y;
-        const SDL_FPoint uv[4] = {{u0, v0}, {u1, v0}, {u1, v1}, {u0, v1}};
+        SDL_FPoint uv[4] = {{u0, v0}, {u1, v0}, {u1, v1}, {u0, v1}};
+        if (q.has_uv)
+            for (int k = 0; k < 4; ++k) uv[k] = {q.uv[k].x / size.x, q.uv[k].y / size.y};
         const int base = static_cast<int>(verts_.size());
         for (int k = 0; k < 4; ++k) {
             SDL_Vertex v;

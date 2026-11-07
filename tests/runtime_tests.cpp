@@ -7,6 +7,7 @@
 #include "png_writer.h"
 #include "vnr/rt/app.h"
 #include "vnr/rt/json.h"
+#include "vnr/rt/layer_mask.h"
 #include "vnr/rt/ui_skin.h"
 
 #ifndef VNR_FIXTURE_DIR
@@ -547,4 +548,80 @@ TEST(asset_cache_keys_stay_short_for_long_urls) {
     ids.back() = 1098348701;  // a different list keeps a different key
     CHECK(AssetCache::cache_key(svt_script_url(ids, Region::JP), {}) != a);
     CHECK_EQ(AssetCache::cache_key(svt_script_url(ids, Region::JP), {}).size(), a.size());
+}
+
+namespace {
+// A w x h mask: pixel (x, y) is white when inside(x, y), else opaque black.
+Image mask_image(int w, int h, const std::function<bool(int, int)>& inside) {
+    Image img;
+    img.width = w;
+    img.height = h;
+    img.rgba.resize(static_cast<std::size_t>(w) * h * 4);
+    for (int y = 0; y < h; ++y)
+        for (int x = 0; x < w; ++x) {
+            std::uint8_t* p = &img.rgba[(static_cast<std::size_t>(y) * w + x) * 4];
+            p[0] = p[1] = p[2] = inside(x, y) ? 255 : 0;
+            p[3] = 255;
+        }
+    return img;
+}
+float polygon_area(const std::vector<Vec2>& poly) {
+    float a = 0;
+    for (std::size_t i = 0; i < poly.size(); ++i) {
+        const Vec2 p = poly[i], q = poly[(i + 1) % poly.size()];
+        a += p.x * q.y - q.x * p.y;
+    }
+    return std::fabs(a) / 2;
+}
+}  // namespace
+
+TEST(layer_mask_reads_the_window_shape) {
+    // a band over the top half, full width: 64x64 mask -> stage x 0-1344, y 0-512
+    LayerMask band = build_layer_mask(mask_image(64, 64, [](int, int y) { return y < 32; }));
+    REQUIRE(band.ok);
+    CHECK(band.full_width);
+    CHECK(!band.narrow);
+    CHECK_NEAR(polygon_area(band.polygon), 1344.0 * 512, 1.0);
+    CHECK_NEAR(band.band_center, 15.5 * 16, 0.01);  // mean bright row 15.5, 16 stage units per mask row
+    // the left 3/4 of the top half: neither full width nor narrow
+    LayerMask left = build_layer_mask(mask_image(64, 64, [](int x, int y) { return y < 32 && x < 48; }));
+    REQUIRE(left.ok);
+    CHECK(!left.full_width);
+    CHECK(!left.narrow);
+    CHECK_NEAR(polygon_area(left.polygon), 1008.0 * 512, 1.0);
+    CHECK_NEAR(left.band_center_x, 23.5 * 21, 0.01);
+    // a narrow column
+    CHECK(build_layer_mask(mask_image(64, 64, [](int x, int) { return x >= 10 && x < 20; })).narrow);
+    // nothing bright: no window
+    CHECK(!build_layer_mask(mask_image(8, 8, [](int, int) { return false; })).ok);
+}
+
+TEST(clip_quad_cuts_sprites_along_the_mask_edge) {
+    Quad q;
+    q.texture = 7;
+    q.src = {0, 0, 100, 100};
+    q.pos[0] = {0, 0};
+    q.pos[1] = {100, 0};
+    q.pos[2] = {100, 100};
+    q.pos[3] = {0, 100};
+    // a triangle covering the half of the square below its diagonal (and more, outside it)
+    const std::vector<Vec2> tri = {{-50, -50}, {150, 150}, {-50, 150}};
+    const std::vector<Quad> parts = clip_quad(q, tri);
+    REQUIRE(!parts.empty());
+    float area = 0;
+    for (const Quad& p : parts) {
+        CHECK(p.has_uv);
+        CHECK_EQ(p.texture, static_cast<TextureId>(7));
+        CHECK(p.pos[3] == p.pos[2]);  // triangles
+        area += polygon_area({p.pos[0], p.pos[1], p.pos[2]});
+        for (int k = 0; k < 3; ++k) {  // this square maps 1:1 to its texture
+            CHECK_NEAR(p.uv[k].x, p.pos[k].x, 1e-3);
+            CHECK_NEAR(p.uv[k].y, p.pos[k].y, 1e-3);
+            CHECK(p.pos[k].y >= p.pos[k].x - 1e-3);  // below the diagonal
+        }
+    }
+    CHECK_NEAR(area, 5000, 0.5);
+    // fully inside: kept whole (as two triangles); fully outside: dropped
+    CHECK_EQ(clip_quad(q, {{-10, -10}, {200, -10}, {200, 200}, {-10, 200}}).size(), static_cast<std::size_t>(2));
+    CHECK(clip_quad(q, {{200, 200}, {300, 200}, {300, 300}}).empty());
 }

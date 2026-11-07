@@ -80,6 +80,7 @@ LayerPlacement Stage::placement(const Element& e) const {
     const bool edge = l.mask_mode == "maskEdge" || l.mask_mode == "maskedge";
     p.scale = l.scale.value();
     p.scale_position = edge;
+    if (edge) p.mask = l.mask;
     // Fate Café: a maskEdge layer moves as a group; otherwise its characters shift by x (by y too only
     // for "mask" layers) and scale with the layer.
     p.offset = {off.x, (edge || l.mask_mode == "mask") ? off.y : 0.f};
@@ -89,7 +90,9 @@ LayerPlacement Stage::placement(const Element& e) const {
         if (l.depth) order = *l.depth;
         else if (e.layer.size() == 2 && e.layer[0] == '#' && std::isalpha(static_cast<unsigned char>(e.layer[1])))
             order = static_cast<float>(std::toupper(static_cast<unsigned char>(e.layer[1])) - 'A' + 1);
-        p.order = order;
+        // maskEdge surfaces (split-screen windows) cover the main stage, as in Fate Café; other moved
+        // layers go under the main characters.
+        p.order = edge ? kSurfaceLayerOrder + order : order;
     }
     return p;
 }

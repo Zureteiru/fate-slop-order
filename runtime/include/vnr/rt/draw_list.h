@@ -31,6 +31,10 @@ struct Quad {
     Rect src;         // texture pixels (ignored for solid quads)
     Vec2 pos[4];      // stage units: top-left, top-right, bottom-right, bottom-left
     Color color;      // tint / solid colour, alpha = opacity
+    // Per-corner texture coordinates (texture pixels) instead of `src`: clipped sprites. A triangle is a
+    // quad whose last corner repeats the third.
+    bool has_uv = false;
+    Vec2 uv[4];
 };
 
 struct DrawList {

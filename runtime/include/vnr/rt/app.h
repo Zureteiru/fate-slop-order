@@ -124,6 +124,7 @@ private:
     std::size_t script_index_ = 0;
     std::unique_ptr<Player> player_;
     std::vector<int> figure_ids_;
+    std::vector<std::string> mask_names_;  // subCameraFilter masks of the part
     std::size_t assets_total_ = 0;
 
     std::string base_figure_url(int figure_id) const;
