@@ -7,8 +7,10 @@
 //                               (hidden window: open that picker screen, wait for its images, save a frame, exit)
 //            [--smoke N --screenshot out.bmp]   (hidden window: tap N lines, save a frame, exit)
 //            [--until "text"]   (smoke: keep tapping until a line containing "text" is waiting)
+//            [--wipe 0.5]       (smoke: stop mid-wipe once the cover reaches this value)
 //            [--log] [--auto]   (smoke: open the LOG screen / turn AUTO on before the capture)
 //            [--no-audio]       (no sound device; the mixer still runs, so voice waits keep their timing)
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -92,6 +94,7 @@ int main(int argc, char** argv) {
     int smoke = -1;
     const char* screenshot = nullptr;
     std::string until;
+    float wipe_at = -1;
     bool matched = false;
     bool open_log = false, auto_on = false, no_audio = false, scripts_given = false;
     std::string picker_shot;
@@ -103,6 +106,7 @@ int main(int argc, char** argv) {
         else if (a == "--smoke" && i + 1 < argc) smoke = std::atoi(argv[++i]);
         else if (a == "--screenshot" && i + 1 < argc) screenshot = argv[++i];
         else if (a == "--until" && i + 1 < argc) until = argv[++i];
+        else if (a == "--wipe" && i + 1 < argc) wipe_at = static_cast<float>(std::atof(argv[++i]));
         else if (a == "--log") open_log = true;
         else if (a == "--auto") auto_on = true;
         else if (a == "--no-audio") no_audio = true;
@@ -179,7 +183,10 @@ int main(int argc, char** argv) {
                     if (!matched) taps = -1000000;
                     else taps = 0;
                 }
-                if (taps < smoke && smoke_clock > 0.05) {
+                const Anim& cover = p.stage().wipe.cover;
+                if (wipe_at >= 0 && (until.empty() || matched) && cover.active() && std::fabs(cover.value() - wipe_at) < 0.05f) {
+                    running = false;  // --wipe: capture this frame, mid-wipe
+                } else if (taps < smoke && smoke_clock > 0.05) {
                     smoke_clock = 0;
                     if (p.pending_choice()) input.push_back({rt::InputEvent::Kind::Choose, {}, 0});
                     else if (p.status() == Status::Typing || p.status() == Status::AwaitAdvance) {
