@@ -130,12 +130,39 @@ struct Communication {      // communicationChara: codec-style hologram figure
     Anim opacity;
 };
 
+// A sub-camera layer (`charaLayer C sub #A`). Its characters draw only while it is shown, moved and
+// scaled with it (subRenderFadein / subRenderMove / subCameraMove / subRenderScale), as Fate Café does.
+struct SubLayer {
+    bool shown = false;
+    bool hiding = false;        // subRenderFadeout with a duration: hidden once `opacity` reaches 0
+    bool placed = false;        // a position was given: drawn under the main characters
+    Anim2 offset;               // y up, like character positions
+    Anim scale;                 // 1 = normal
+    Anim opacity;               // 0..1, the subRenderFadein / subRenderFadeout fade
+    std::optional<float> depth; // subRenderDepth; otherwise the layer letter (#A = 1, #B = 2...)
+    std::string mask_mode;      // subCameraFilter mode, e.g. "maskEdge" (the mask shape is not drawn yet)
+    std::string mask;           // its mask texture name
+    SubLayer();
+};
+
+// How an element's sub layer changes where it is drawn.
+struct LayerPlacement {
+    bool visible = true;          // false: its layer is hidden
+    Vec2 offset;                  // added to the element position (y up)
+    float scale = 1;              // multiplies the element scale
+    bool scale_position = false;  // maskEdge layers move as one group: the position scales too
+    float opacity = 1;
+    float order = 50;             // draw order: main characters 50, moved layers by depth / letter
+};
+inline constexpr float kMainLayerOrder = 50;
+
 struct Stage {
     std::string background;       // scene id
     std::string prev_background;  // fading out under the new one
     Anim background_mix;          // 0 -> 1 while the new background fades in
 
     std::map<std::string, Element> elements;
+    std::map<std::string, SubLayer> sub_layers;  // by key ("#A")
     ScreenFade fade;
     Wipe wipe;
     WipeFilter wipe_filter;
@@ -158,6 +185,7 @@ struct Stage {
     bool busy(WaitCat c) const;   // anything of this category still animating?
     void finish_all();            // jump every animation to its end (used by Back)
     Element* find(const std::string& code);
+    LayerPlacement placement(const Element& e) const;
 };
 
 }  // namespace vnr

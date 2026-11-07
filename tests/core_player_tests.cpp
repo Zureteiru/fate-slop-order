@@ -246,3 +246,68 @@ TEST(player_camera_and_effects) {
     r.player.advance();
     CHECK(r.player.stage().effects.empty());
 }
+
+namespace {
+const Element& el(const Player& p, const char* code) { return p.stage().elements.at(code); }
+bool waiting_on(const Player& p, const char* text) {
+    const auto v = p.text();
+    return p.status() == Status::AwaitAdvance && v.say && v.say->text.plain() == text;
+}
+}  // namespace
+
+TEST(player_sub_layers_show_only_after_subRenderFadein) {
+    Run r("[charaSet A 98001000 1 Mash]\n[charaSet S 98004000 1 Sub]\n[charaFadein A 0 0,0]\n[subCameraOn 4]\n"
+          "[charaLayer S sub #A]\n[charaFadein S 0 50,100]\n＠\none\n[k]\n"
+          "[subRenderFadein #A 0.4 400,-150]\n＠\ntwo\n[k]\n"
+          "[subRenderFadeout #A 0.5]\n＠\nthree\n[k]\n");
+    CHECK(r.diag.unknown_commands.empty());
+    REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "one"); }) >= 0);
+    const Stage& st = r.player.stage();
+    CHECK(!st.placement(el(r.player, "S")).visible);  // on a layer nobody showed yet
+    CHECK(st.placement(el(r.player, "A")).visible);
+    CHECK_NEAR(st.placement(el(r.player, "A")).order, kMainLayerOrder, 1e-6);
+    r.player.advance();
+    REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "two"); }) >= 0);
+    drive::time_until(r.player, [] { return false; }, 0.5);
+    LayerPlacement p = st.placement(el(r.player, "S"));
+    CHECK(p.visible);
+    CHECK_NEAR(p.opacity, 1, 1e-4);
+    CHECK_NEAR(p.offset.x, 400, 1e-4);
+    CHECK_NEAR(p.offset.y, 0, 1e-4);   // no mask: Fate Café moves plain layers along x only
+    CHECK_NEAR(p.order, 1, 1e-6);      // #A, placed: under the main characters
+    CHECK(!p.scale_position);
+    r.player.advance();
+    REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "three"); }) >= 0);
+    CHECK(st.placement(el(r.player, "S")).visible);  // fading out
+    drive::time_until(r.player, [] { return false; }, 0.6);
+    CHECK(!st.placement(el(r.player, "S")).visible);
+}
+
+TEST(player_mask_edge_layers_move_as_a_group_and_subCameraOff_hides_them) {
+    Run r("[charaSet S 98004000 1 Sub]\n[charaLayer S sub #B]\n[charaFadein S 0 100,50]\n"
+          "[subCameraFilter #B maskEdge cut359_mask16 5 255,255,255,255 0]\n[subRenderScale #B 2]\n"
+          "[subRenderFadeinFSSideR #B 0 -400,-150]\n＠\na\n[k]\n[subCameraOff]\n＠\nb\n[k]\n"
+          "[charaLayer S normal]\n＠\nc\n[k]\n");
+    CHECK(r.diag.unknown_commands.empty());
+    REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "a"); }) >= 0);
+    const Stage& st = r.player.stage();
+    LayerPlacement p = st.placement(el(r.player, "S"));
+    CHECK(p.visible);
+    CHECK(p.scale_position);
+    CHECK_NEAR(p.scale, 2, 1e-6);
+    CHECK_NEAR(p.offset.x, -400, 1e-4);
+    CHECK_NEAR(p.offset.y, -150, 1e-4);
+    CHECK_NEAR(p.order, 2, 1e-6);  // #B
+    CHECK_EQ(st.sub_layers.at("#B").mask, "cut359_mask16");
+    r.player.advance();
+    REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "b"); }) >= 0);
+    CHECK(!st.placement(el(r.player, "S")).visible);  // subCameraOff resets every layer
+    r.player.back();  // Back restores the layer with the rest of the stage
+    REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "a"); }) >= 0);
+    CHECK(r.player.stage().placement(el(r.player, "S")).visible);
+    r.player.advance();
+    REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "b"); }) >= 0);
+    r.player.advance();
+    REQUIRE(drive::time_until(r.player, [&] { return waiting_on(r.player, "c"); }) >= 0);
+    CHECK(r.player.stage().placement(el(r.player, "S")).visible);  // back on the main stage
+}

@@ -1,6 +1,7 @@
 #include "vnr/stage.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 
 namespace vnr {
@@ -60,10 +61,49 @@ Element* Stage::find(const std::string& code) {
     return it == elements.end() ? nullptr : &it->second;
 }
 
+SubLayer::SubLayer() {
+    scale.snap(1);
+    opacity.snap(1);
+}
+
+LayerPlacement Stage::placement(const Element& e) const {
+    LayerPlacement p;
+    if (e.layer.empty()) return p;
+    const auto it = sub_layers.find(e.layer);
+    if (it == sub_layers.end() || !it->second.shown) {
+        p.visible = false;
+        return p;
+    }
+    const SubLayer& l = it->second;
+    p.opacity = l.opacity.value();
+    const Vec2 off = l.offset.value();
+    const bool edge = l.mask_mode == "maskEdge" || l.mask_mode == "maskedge";
+    p.scale = l.scale.value();
+    p.scale_position = edge;
+    // Fate Café: a maskEdge layer moves as a group; otherwise its characters shift by x (by y too only
+    // for "mask" layers) and scale with the layer.
+    p.offset = {off.x, (edge || l.mask_mode == "mask") ? off.y : 0.f};
+    const bool moved = l.placed || !l.mask_mode.empty() || off.x != 0 || off.y != 0 || p.scale != 1;
+    if (moved) {
+        float order = 1;
+        if (l.depth) order = *l.depth;
+        else if (e.layer.size() == 2 && e.layer[0] == '#' && std::isalpha(static_cast<unsigned char>(e.layer[1])))
+            order = static_cast<float>(std::toupper(static_cast<unsigned char>(e.layer[1])) - 'A' + 1);
+        p.order = order;
+    }
+    return p;
+}
+
 namespace {
 template <class F>
 void for_each_anim(Stage& s, F&& f) {
     f(s.background_mix);
+    for (auto& [key, l] : s.sub_layers) {
+        f(l.offset.x);
+        f(l.offset.y);
+        f(l.scale);
+        f(l.opacity);
+    }
     for (auto& [code, e] : s.elements) {
         f(e.swap_mix);
         f(e.opacity);
@@ -96,6 +136,11 @@ void Stage::tick(double dt) {
             e.cutin.reset();
         }
     }
+    for (auto& [key, l] : sub_layers)
+        if (l.hiding && !l.opacity.active()) {
+            l.shown = l.hiding = false;
+            l.opacity.snap(1);
+        }
     shake.tick(dt);
     message_shake.tick(dt);
     flash.tick(dt);
@@ -130,6 +175,11 @@ void Stage::finish_all() {
     if (flash.active && !flash.loop) flash.active = false;
     if (flash.fading_out) flash.active = false;
     title_card.reset();
+    for (auto& [key, l] : sub_layers)
+        if (l.hiding) {
+            l.shown = l.hiding = false;
+            l.opacity.snap(1);
+        }
     for (auto& [code, e] : elements) {
         if (e.cutin && !e.cutin->reveal) {
             e.shown = false;

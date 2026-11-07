@@ -25,6 +25,9 @@ const std::set<std::string, std::less<>>& supported_names() {
         "charaEffectStop", "charaEffectDestroy", "charaBackEffectStop", "charaBackEffectDestroy",
         "charaEffectEdgeBlur", "charaEffectEdgeBlurStop", "charaEffectEdgeBlurDestroy", "charaSpecialEffect",
         "communicationChara", "communicationCharaLoop", "communicationCharaFace", "communicationCharaClear",
+        // sub-camera layers
+        "subCameraOn", "subCameraOff", "subCameraMove", "subCameraFilter", "subRenderFadein", "subRenderFadeout",
+        "subRenderMove", "subRenderScale", "subRenderDepth",
         // effects
         "effect", "fowardEffect", "forwardEffect", "backEffect", "effectStop", "effectDestroy", "fowardEffectStop",
         "fowardEffectDestroy", "forwardEffectStop", "forwardEffectDestroy", "backEffectStop", "backEffectDestroy",
@@ -58,6 +61,10 @@ std::string_view family(std::string_view n) {
     if (starts_with(n, "charaPut")) return "charaPut";
     if (starts_with(n, "charaMoveScale")) return "charaMoveScale";
     if (starts_with(n, "charaMove")) return "charaMove";
+    if (starts_with(n, "subRenderFadein")) return "subRenderFadein";  // incl. FSSideL / FSSideR
+    if (starts_with(n, "subRenderFadeout")) return "subRenderFadeout";
+    if (starts_with(n, "subRenderMoveScale")) return "subRenderScale";
+    if (starts_with(n, "subRenderMove")) return "subRenderMove";
     return n;
 }
 
@@ -444,6 +451,59 @@ void Player::exec(const Command& c, bool inline_cmd, bool skipping) {
     }
     if (n == "communicationCharaClear") {
         if (stage_.communication) stage_.communication->opacity.go(0, kCharaFade, Ease::Ease, WaitCat::Communication);
+        return;
+    }
+    // ---- sub-camera layers (`charaLayer C sub #A`), after Fate Café
+    if (n == "subCameraOn" || n == "subCameraOff") {
+        stage_.sub_layers.clear();  // every layer hidden and reset
+        return;
+    }
+    if (n.substr(0, 9) == "subRender" || n == "subCameraMove" || n == "subCameraFilter") {
+        if (!c.has(0)) return;
+        SubLayer& l = stage_.sub_layers[c.arg(0)];
+        if (n == "subRenderFadein") {  // [subRenderFadein #A t x,y]
+            l.shown = true;
+            l.hiding = false;
+            if (const auto p = parse_position(c.arg(2))) {
+                l.offset.snap(position_offset(*p));
+                l.placed = true;
+            }
+            l.opacity.snap(0);
+            l.opacity.go(1, num(1, 0), Ease::Ease, WaitCat::CharaFade);
+        } else if (n == "subRenderFadeout") {  // [subRenderFadeout #A t]
+            const double t = num(1, 0);
+            if (t > 0 && l.shown) {
+                l.hiding = true;
+                l.opacity.go(0, t, Ease::Ease, WaitCat::CharaFade);
+            } else {
+                l.shown = l.hiding = false;
+                l.opacity.snap(1);
+            }
+        } else if (n == "subRenderMove") {  // [subRenderMove #A x,y t]
+            if (const auto p = parse_position(c.arg(1))) {
+                l.offset.go(position_offset(*p), num(2, 0), parse_ease(c.arg(3), Ease::Ease), WaitCat::CharaMove);
+                l.placed = true;
+            }
+        } else if (n == "subCameraMove") {  // [subCameraMove #A t x,y scale]
+            if (const auto p = parse_position(c.arg(2))) {
+                l.offset.go(position_offset(*p), num(1, 0), Ease::Ease, WaitCat::CharaMove);
+                l.placed = true;
+            }
+            if (has_num(3)) l.scale.go(static_cast<float>(num(3, 1)), num(1, 0), Ease::Ease, WaitCat::CharaMove);
+        } else if (n == "subRenderScale") {  // [subRenderScale #A s t]
+            l.scale.go(static_cast<float>(num(1, 1)), num(2, 0), Ease::Ease, WaitCat::CharaMove);
+        } else if (n == "subRenderDepth") {
+            l.depth = static_cast<float>(num(1, 0));
+        } else if (n == "subCameraFilter") {  // [subCameraFilter #A maskEdge cut359_mask10 ...]
+            const std::string& mode = c.arg(1);
+            if (mode.empty() || mode == "normal" || mode == "through") {
+                l.mask_mode.clear();
+                l.mask.clear();
+            } else {
+                l.mask_mode = mode;
+                l.mask = c.arg(2);
+            }
+        }
         return;
     }
     if (n == "charaTalk") {

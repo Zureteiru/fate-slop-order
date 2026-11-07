@@ -81,16 +81,30 @@ void draw_figure(int figure_id, int face, Vec2 offset, float scale, Color tint, 
 }
 
 void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& t, DrawList& out) {
-    std::vector<const Element*> order;
-    for (const auto& [code, e] : st.elements)
-        if (e.opacity.value() > 0.001f) order.push_back(&e);
-    std::stable_sort(order.begin(), order.end(), [](const Element* x, const Element* y) {
-        if (x->overlay != y->overlay) return y->overlay;
-        return x->depth < y->depth;
+    struct Item {
+        const Element* e;
+        LayerPlacement lp;
+    };
+    std::vector<Item> order;
+    for (const auto& [code, e] : st.elements) {
+        if (e.opacity.value() <= 0.001f) continue;
+        const LayerPlacement lp = st.placement(e);  // sub-camera layers: hidden, moved or scaled
+        if (lp.visible && lp.opacity > 0.001f) order.push_back({&e, lp});
+    }
+    std::stable_sort(order.begin(), order.end(), [](const Item& x, const Item& y) {
+        if (x.e->overlay != y.e->overlay) return y.e->overlay;
+        if (x.lp.order != y.lp.order) return x.lp.order < y.lp.order;
+        return x.e->depth < y.e->depth;
     });
-    for (const Element* e : order) {
-        const float opacity = e->opacity.value();
+    for (const Item& item : order) {
+        const Element* e = item.e;
+        const LayerPlacement& lp = item.lp;
+        const float opacity = e->opacity.value() * lp.opacity;
+        const float scale = e->scale.value() * lp.scale;
         Vec2 offset = e->pos.value();
+        if (lp.scale_position) offset = {offset.x * lp.scale, offset.y * lp.scale};
+        offset.x += lp.offset.x;
+        offset.y += lp.offset.y;
         const Vec2 shake = e->shake.offset();
         offset.x += shake.x;
         offset.y -= shake.y;
@@ -101,12 +115,12 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
         }
         const Color tint = element_tint(*e, opacity);
         if (e->kind == ElementKind::Chara) {
-            draw_figure(e->figure_id, e->face, offset, e->scale.value(), tint, a, t, out);
+            draw_figure(e->figure_id, e->face, offset, scale, tint, a, t, out);
         } else {
             const std::string url = e->kind == ElementKind::Scene ? background_url(e->asset, a.region) : image_url(e->asset, a.region);
             const TextureAsset* tex = a.cache->texture(url);
             if (!tex) continue;
-            const float w = static_cast<float>(tex->width) * e->scale.value(), h = static_cast<float>(tex->height) * e->scale.value();
+            const float w = static_cast<float>(tex->width) * scale, h = static_cast<float>(tex->height) * scale;
             push_quad(out, tex->id, {0, 0, static_cast<float>(tex->width), static_cast<float>(tex->height)},
                       {(kW - w) / 2 + offset.x, (kH - h) / 2 - offset.y, w, h}, tint, t);
         }
