@@ -14,7 +14,9 @@ Rules:
   Windows, macOS, Android) lives only in apps/*/. Anything that differs
   per OS goes through runtime/include/vnr/rt/platform.h.
 - Never edit third_party/; changes go upstream in switch-vnpop.
-- Never commit Fate Café source or game art (UI sheets, fonts); scratch/ is for downloads.
+- Never commit Fate Café source, its assets or game art (UI sheets, fonts, sounds); scratch/ is for downloads.
+  Assets taken from Fate Café or the game are installed into the user folder by a
+  tools/install_*.sh script with a SHA-256 check (see apps/README.md).
 - Work in plan mode first for anything touching core/.
 - A task is done only when the test script passes.
 
@@ -24,5 +26,6 @@ about 30 s, ~15 lines of output). While iterating, run one suite:
 `bash tests/run.sh runtime_tests` (or core_tests, dict_tests).
 Windows app: see apps/README.md (`-DVNR_TARGET=desktop`, MSVC).
 
-Player spec: docs/fatecafe_behavior.md. The "vnreader decisions"
-section at its top overrides Fate Café behaviour: follow the script.
+Player spec: docs/fatecafe_behavior.md. Fate Café is the default: copy its
+behaviour, and rip its assets 1:1 when needed. The "vnreader decisions"
+section at the top of the spec lists the user's exceptions; those win.

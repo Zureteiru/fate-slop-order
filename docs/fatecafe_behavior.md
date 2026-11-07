@@ -8,9 +8,13 @@ This document describes how the Fate Café reader (`https://fatecafe.com/leitor`
 
 All coordinates are in **stage units**, a 1344×626 logical canvas (see §4), unless marked "screen px".
 
-## vnreader decisions (2026-11-06)
+## vnreader decisions (2026-11-06, updated 2026-11-07)
 
-This spec describes Fate Café. vnreader does **not** copy its shortcuts:
+This spec describes Fate Café, and **Fate Café is the default for vnreader** (user, 2026-11-07): where nothing below
+says otherwise, do what this spec says and take Fate Café's assets 1:1 (e.g. the choice click `fgochoice.mp3`).
+Ripped assets are never committed; each user installs them with a `tools/install_*.sh` script.
+
+The user's exceptions, which override the rest of the spec:
 
 1. **Follow the script, not Fate Café.**
    - Honour the durations the script gives for `charaFadein`, `charaFadeout`, `charaMove`, `charaScale` and the `bgm` fade-in.
@@ -21,6 +25,7 @@ This spec describes Fate Café. vnreader does **not** copy its shortcuts:
 2. **Wipe transitions:** use the real game wipe textures if a source can be found, the same way other assets come from Atlas. Otherwise, generate them in code.
 3. **Named particle effects:** rebuild them all. The name→program table in §6 is the starting list.
 4. **Visual reference for effects:** use frames from YouTube chapter playthroughs.
+   Under the default above, Fate Café's 33 wipe textures (base64 PNGs in its reader chunk) are a valid source for item 2.
 5. **Voices (2026-11-07):**
    - `[voice X]` plays where it appears, as Atlas DB does (Fate Café holds it for the next beat). It counts as the
      next line's voice in the backlog only when no wait, choice or movie comes in between.
@@ -28,6 +33,9 @@ This spec describes Fate Café. vnreader does **not** copy its shortcuts:
      (up to 12 s). It stops on `[voiceStop]`, Back, skip, or a new voice.
    - `NP_<svt>_<n>` lives at `Audio/NoblePhantasm_<svt>/NP_<svt>_<n>.mp3`. Other ids try `Servants_` first when the last
      part starts with `B` (battle lines), otherwise `ChrVoice_` first.
+6. **Look:** the story screen matches the real game (UI art from the game's sheets, FOT-Skip Std B, layout measured
+   from 1080p gameplay video; see apps/README.md), not Fate Café's layout.
+7. **No SKIP button** on the story screen.
 
 ## Reference chapters
 
