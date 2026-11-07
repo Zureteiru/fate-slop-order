@@ -15,6 +15,19 @@ std::string AssetCache::cache_key(const std::string& url, const std::string& ran
     }
     while (out.find("..") != std::string::npos) out.replace(out.find(".."), 2, "_");  // never escape the cache dir
     if (!range.empty()) out += ".range_" + range;
+    // Long URLs (svtScript with a dozen charaIds) would pass Windows' 260-character path limit: keep
+    // the start and replace the rest with a hash of the whole key.
+    if (out.size() > kMaxKeyLength) {
+        std::uint64_t h = 1469598103934665603ull;  // FNV-1a
+        for (const char c : out) {
+            h ^= static_cast<unsigned char>(c);
+            h *= 1099511628211ull;
+        }
+        static const char* hex = "0123456789abcdef";
+        std::string tail = "_h";
+        for (int i = 15; i >= 0; --i) tail += hex[(h >> (i * 4)) & 0xF];
+        out = out.substr(0, kMaxKeyLength - tail.size()) + tail;
+    }
     return out;
 }
 

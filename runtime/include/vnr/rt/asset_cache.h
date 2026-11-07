@@ -42,7 +42,9 @@ public:
     std::size_t pending() const { return inflight_.size(); }
     std::size_t failed() const { return failed_; }
 
-    // Cache key for a URL: host + path (+ query/range), safe as a relative file path.
+    // Cache key for a URL: host + path (+ query/range), safe as a relative file path. Keys longer than
+    // kMaxKeyLength end in a hash instead, so the full path fits Windows' limit.
+    static constexpr std::size_t kMaxKeyLength = 150;
     static std::string cache_key(const std::string& url, const std::string& range);
 
 private:

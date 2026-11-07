@@ -535,3 +535,16 @@ TEST(backlog_draws_names_and_ruby) {
     log.draw(entries, atlas, none);
     CHECK(none.quads.empty());
 }
+
+TEST(asset_cache_keys_stay_short_for_long_urls) {
+    const std::string shortk = AssetCache::cache_key("https://static.atlasacademy.io/NA/Back/back10310.png", {});
+    CHECK_EQ(shortk, "static.atlasacademy.io/NA/Back/back10310.png");  // short keys unchanged
+    std::vector<int> ids = {98115000, 1098122900, 1098123000, 1098124500, 1098257300, 1098269330,
+                            1098330800, 1098347310, 1098348500, 1098348510, 1098348700};
+    const std::string a = AssetCache::cache_key(svt_script_url(ids, Region::JP), {});
+    CHECK(a.size() <= AssetCache::kMaxKeyLength);
+    CHECK(a.rfind("api.atlasacademy.io/raw/JP/svtScript", 0) == 0);
+    ids.back() = 1098348701;  // a different list keeps a different key
+    CHECK(AssetCache::cache_key(svt_script_url(ids, Region::JP), {}) != a);
+    CHECK_EQ(AssetCache::cache_key(svt_script_url(ids, Region::JP), {}).size(), a.size());
+}
