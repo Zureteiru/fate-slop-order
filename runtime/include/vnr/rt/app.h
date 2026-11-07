@@ -16,6 +16,7 @@
 #include "vnr/rt/catalogue.h"
 #include "vnr/rt/draw_list.h"
 #include "vnr/rt/focus_nav.h"
+#include "vnr/rt/lookup.h"
 #include "vnr/rt/wipe_mask.h"
 #include "vnr/rt/platform.h"
 #include "vnr/rt/save_screen.h"
@@ -36,7 +37,7 @@ struct InputEvent {
         PointerUp,    // released at `pos` (a tap without a drag closes the log)
         Scroll,       // scroll the log / picker by `pos.y` stage units (+ newer / down): wheel, PgUp/PgDn, stick
         Choose,       // pick choice `index` directly (keyboard 1-9, d-pad + A)
-        ToggleAuto,   // `A` key / Y button
+        ToggleAuto,   // `A` key / - (Back) button
         OpenLog,      // `L` key / X button
         Cancel,       // Esc / Start: closes the log; leaves the part for the picker (quits without one)
         SkipScript,
@@ -48,6 +49,9 @@ struct InputEvent {
         QuickSave,    // F5
         QuickLoad,    // F9
         DeleteSave,   // Delete: the focused save on the Save / Load screen (X also does it there)
+        LookupAt,     // Shift held over `pos` (PC): look up the word under it in the dialogue or the log
+        Lookup,       // Y button: opens the dictionary on the first word (closes it when open). While it is
+                      // open, left / right hop between words and up / down pick an entry.
     };
     Kind kind = Kind::Advance;
     Vec2 pos;
@@ -111,6 +115,12 @@ public:
     bool save_to(int slot);    // the line being read (false when nothing is being read yet)
     bool load_save(int slot);  // switches part when needed (false when the slot is empty or its part is gone)
     std::optional<SaveEntry> capture() const;  // the current stop as a save (nullopt before the first line)
+
+    // Dictionary lookups (<user folder>/dict.bin, loaded on the first lookup).
+    const LookupPopup& lookup() const { return lookup_; }
+    const std::vector<GlyphBox>& story_boxes() const { return story_boxes_; }  // as last drawn
+    // Opens the popup on the first place `text` (UTF-8) appears in the dialogue as last drawn (smoke runs).
+    bool lookup_text(const std::string& text);
     // Autosaves are written at most this often (and always when leaving a part or quitting).
     static constexpr double kAutosaveInterval = 5;
 
@@ -156,6 +166,12 @@ private:
     std::size_t stop_script_ = SIZE_MAX, stop_pc_ = SIZE_MAX;  // the last stop seen (autosave tracking)
     bool autosave_dirty_ = false;
     double autosave_wait_ = 0;
+    Dictionary dict_;
+    bool dict_tried_ = false;
+    LookupPopup lookup_;
+    std::vector<GlyphBox> story_boxes_;      // the dialogue's characters as last drawn
+    std::vector<LookupTarget> log_targets_;  // the log's entries as last drawn (while it is open)
+    bool swallow_pointer_ = false;           // the press that closed the popup: drop its move / release
     std::string toast_;  // "Saved" etc., shown briefly over the story
     double toast_left_ = 0;
 
@@ -168,6 +184,9 @@ private:
     void start_script(std::size_t index);
     void handle(const InputEvent& e);
     void handle_log(const InputEvent& e);
+    bool handle_lookup(const InputEvent& e);  // true when the event was used by the dictionary popup
+    bool ensure_dict();
+    LookupTarget story_target() const { return {0, story_boxes_}; }
     void handle_volume(const InputEvent& e);
     void play_audio_events();
     void choose(std::size_t index);

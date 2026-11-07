@@ -37,6 +37,7 @@ struct SceneAssets {
     TextureId fx_atlas = 0;                  // effect sprites (make_effect_atlas)
     TitleTexts titles;                       // what bit_chapterstart / bit_queststart cards say
     float picture_frame_opacity = 1;         // pictureFrame fade-in (Fate Café: 0.2 s), kept by the App
+    std::vector<GlyphBox>* text_boxes = nullptr;  // receives the dialogue's drawn characters (lookups)
 };
 
 // Layout of the story UI (stage units), shared with input hit-testing. Every number is measured

@@ -183,8 +183,11 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
                 out.push_back({InputEvent::Kind::Back, {}, 0});
             break;
         case SDL_MOUSEMOTION:
-            if (e.motion.which == SDL_TOUCH_MOUSEID || !(e.motion.state & SDL_BUTTON_LMASK)) break;
-            out.push_back({InputEvent::Kind::PointerMove, mouse_pos(e.motion.x, e.motion.y, renderer), 0});
+            if (e.motion.which == SDL_TOUCH_MOUSEID) break;
+            if (e.motion.state & SDL_BUTTON_LMASK)
+                out.push_back({InputEvent::Kind::PointerMove, mouse_pos(e.motion.x, e.motion.y, renderer), 0});
+            else if (SDL_GetModState() & KMOD_SHIFT)  // Shift + hover: dictionary lookup
+                out.push_back({InputEvent::Kind::LookupAt, mouse_pos(e.motion.x, e.motion.y, renderer), 0});
             break;
         case SDL_MOUSEBUTTONUP:
             if (e.button.which == SDL_TOUCH_MOUSEID || e.button.button != SDL_BUTTON_LEFT) break;
@@ -232,6 +235,14 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
                 case SDLK_F5: out.push_back({InputEvent::Kind::QuickSave, {}, 0}); break;
                 case SDLK_F9: out.push_back({InputEvent::Kind::QuickLoad, {}, 0}); break;
                 case SDLK_DELETE: out.push_back({InputEvent::Kind::DeleteSave, {}, 0}); break;
+                case SDLK_LSHIFT:
+                case SDLK_RSHIFT:  // pressing Shift looks up the word already under the mouse
+                    if (!e.key.repeat) {
+                        int x = 0, y = 0;
+                        SDL_GetMouseState(&x, &y);
+                        out.push_back({InputEvent::Kind::LookupAt, mouse_pos(x, y, renderer), 0});
+                    }
+                    break;
                 default:
                     if (e.key.keysym.sym >= SDLK_1 && e.key.keysym.sym <= SDLK_9)
                         out.push_back({InputEvent::Kind::Choose, {}, static_cast<std::size_t>(e.key.keysym.sym - SDLK_1)});
@@ -241,7 +252,8 @@ bool translate_event(const SDL_Event& e, const Renderer& renderer, std::vector<I
             switch (e.cbutton.button) {
                 case SDL_CONTROLLER_BUTTON_A: out.push_back({InputEvent::Kind::Advance, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_B: out.push_back({InputEvent::Kind::Back, {}, 0}); break;
-                case SDL_CONTROLLER_BUTTON_Y: out.push_back({InputEvent::Kind::ToggleAuto, {}, 0}); break;
+                case SDL_CONTROLLER_BUTTON_Y: out.push_back({InputEvent::Kind::Lookup, {}, 0}); break;
+                case SDL_CONTROLLER_BUTTON_BACK: out.push_back({InputEvent::Kind::ToggleAuto, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_X: out.push_back({InputEvent::Kind::OpenLog, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: out.push_back({InputEvent::Kind::OpenSave, {}, 0}); break;
                 case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: out.push_back({InputEvent::Kind::OpenLoad, {}, 0}); break;

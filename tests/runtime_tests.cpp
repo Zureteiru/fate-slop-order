@@ -15,6 +15,7 @@
 #include "vnr/rt/special_mask.h"
 #include "vnr/rt/title_card.h"
 #include "vnr/rt/wipe_mask.h"
+#include "vnr/script_lines.h"
 
 #ifndef VNR_FIXTURE_DIR
 #error "VNR_FIXTURE_DIR must point at .cache/scripts"
@@ -985,4 +986,173 @@ TEST(effects_run_once_or_loop_and_follow_their_anchor) {
     e.shown = false;
     draw_effects(st, a, false, dl);
     CHECK(dl.quads.empty());
+}
+
+// ---- dictionary lookups (the vnpop fixture dictionary, built by the test_dicts target)
+
+namespace {
+std::vector<char32_t> u32(const std::string& s) {
+    std::vector<char32_t> out;
+    for (std::size_t i = 0; i < s.size();) out.push_back(utf8::next(s, i));
+    return out;
+}
+std::vector<std::uint8_t> test_dict() { return fakes::bytes_of(VNR_TEST_DICT); }
+// A row of 30-unit character boxes at y 470 (where the dialogue sits), for popups without an App.
+LookupTarget row_target(const std::string& text) {
+    LookupTarget t;
+    float x = 300;
+    for (char32_t c : u32(text)) {
+        t.boxes.push_back({{x, 470, 30, 40}, c});
+        x += 30;
+    }
+    return t;
+}
+// Plays the JP Fuyuki fixture until the line containing `text` waits for a tap.
+bool play_jp_until(App& app, const std::string& text) {
+    return play_until(app, [&] {
+        const Player* p = app.player();
+        const TextView tv = p->text();
+        return p->status() == Status::AwaitAdvance && tv.say && tv.say->text.plain().find(text) != std::string::npos;
+    });
+}
+Vec2 centre(const GlyphBox& b) { return {b.rect.x + b.rect.w / 2, b.rect.y + b.rect.h / 2}; }
+}  // namespace
+
+TEST(dictionary_finds_inflected_words_in_yomitan_order) {
+    Dictionary dict;
+    CHECK(!dict.load({1, 2, 3}));
+    REQUIRE(dict.load(test_dict()));
+    const auto text = u32("星を見て食べなかった");
+    const auto at_tabe = dict.lookup(text, 4);
+    REQUIRE(!at_tabe.empty());
+    CHECK_EQ(at_tabe[0].headword, std::string("食べる"));
+    CHECK_EQ(at_tabe[0].reading, std::string("たべる"));
+    CHECK_EQ(at_tabe[0].matched, static_cast<std::size_t>(6));  // 食べなかった
+    CHECK(!at_tabe[0].rule.empty());
+    CHECK(at_tabe[0].glossary.find("to eat") != std::string::npos);
+    CHECK(at_tabe[0].freq_rank > 0);
+    const auto at_hoshi = dict.lookup(text, 0);
+    REQUIRE(!at_hoshi.empty());
+    CHECK_EQ(at_hoshi[0].headword, std::string("星"));
+    CHECK(at_hoshi[0].rule.empty());
+    CHECK(dict.lookup(text, 1).empty());  // を: no entry
+    const auto words = dict.word_starts(text);
+    CHECK(std::find(words.begin(), words.end(), std::size_t{0}) != words.end());
+    CHECK(std::find(words.begin(), words.end(), std::size_t{4}) != words.end());
+    // text longer than vnpop's 128-character line is looked up through a window
+    std::string long_text;
+    for (int i = 0; i < 200; ++i) long_text += "を";
+    long_text += "読んだ";
+    const auto far = dict.lookup(u32(long_text), 200);
+    REQUIRE(!far.empty());
+    CHECK_EQ(far[0].headword, std::string("読む"));
+    const auto far_words = dict.word_starts(u32(long_text));
+    CHECK(std::find(far_words.begin(), far_words.end(), std::size_t{200}) != far_words.end());
+}
+
+TEST(lookup_popup_hops_pages_and_sits_above_the_word) {
+    Env env;
+    TextureStore tex;
+    GlyphAtlas atlas(tex, env.platform.font, 0);
+    REQUIRE(atlas.ok());
+    Dictionary dict;
+    REQUIRE(dict.load(test_dict()));
+    const LookupTarget t = row_target("夜に星を見て食べなかった");
+    LookupPopup pop;
+    CHECK(!pop.open(dict, t, 1));  // に
+    CHECK(!pop.is_open());
+    REQUIRE(pop.open_first(dict, t));
+    CHECK_EQ(pop.start(), static_cast<std::size_t>(0));
+    CHECK(pop.hop(dict, +1));
+    CHECK_EQ(pop.start(), static_cast<std::size_t>(2));  // 星
+    CHECK(pop.hop(dict, +1));
+    CHECK_EQ(pop.start(), static_cast<std::size_t>(6));  // 食べなかった
+    CHECK(!pop.hop(dict, +1));                           // the last word: stays
+    CHECK_EQ(pop.start(), static_cast<std::size_t>(6));
+    CHECK(pop.hop(dict, -1));
+    CHECK_EQ(pop.start(), static_cast<std::size_t>(2));
+    pop.select(+5);  // clamps to the entries there are
+    CHECK(pop.selected() < pop.entries().size());
+    DrawList dl;
+    pop.draw(atlas, dl);
+    CHECK(dl.quads.size() > 20);
+    CHECK(pop.contains({300 + 2 * 30 + 15, 470 - 30}));  // just above 星
+    CHECK(!pop.contains({300 + 2 * 30 + 15, 490}));      // not over the word itself
+    pop.close();
+    CHECK(!pop.contains({300 + 2 * 30 + 15, 470 - 30}));
+}
+
+TEST(app_shift_hover_and_y_look_up_the_dialogue) {
+    Env env;
+    fakes::MemFiles user;
+    user.data[kDictKey] = test_dict();
+    env.platform.user = &user;
+    AppConfig cfg;
+    cfg.region = Region::JP;
+    cfg.script_ids = {"0100000011"};
+    App app(env.platform, cfg);
+    REQUIRE(play_jp_until(app, "行ってしまいました"));
+    const std::vector<GlyphBox> boxes = app.story_boxes();
+    const char32_t kIku = 0x884C;  // 行
+    std::size_t iku = boxes.size();
+    for (std::size_t i = 0; i < boxes.size(); ++i)
+        if (boxes[i].cp == kIku) iku = i;
+    REQUIRE(iku < boxes.size());
+    const std::size_t lines = app.player()->backlog().size();
+
+    // Shift over 行: 行く, with the inflection undone; the story waits under the popup
+    app.update(0, {{InputEvent::Kind::LookupAt, centre(boxes[iku]), 0}});
+    REQUIRE(app.lookup().is_open());
+    CHECK_EQ(app.lookup().start(), iku);
+    CHECK_EQ(app.lookup().entries()[0].headword, std::string("行く"));
+    CHECK(!app.lookup().entries()[0].rule.empty());
+    app.update(30, {});
+    CHECK_EQ(app.player()->backlog().size(), lines);
+    // a tap outside closes it and does nothing else (its release is not a tap either)
+    app.update(0, {{InputEvent::Kind::Pointer, {700, 200}, 0}, {InputEvent::Kind::PointerUp, {700, 200}, 0}});
+    CHECK(!app.lookup().is_open());
+    CHECK_EQ(app.player()->backlog().size(), lines);
+    CHECK(app.player()->status() == Status::AwaitAdvance);
+    // Shift over no text closes it
+    app.update(0, {{InputEvent::Kind::LookupAt, centre(boxes[iku]), 0}});
+    REQUIRE(app.lookup().is_open());
+    app.update(0, {{InputEvent::Kind::LookupAt, {700, 100}, 0}});
+    CHECK(!app.lookup().is_open());
+
+    // Y: the first dictionary word of the line; right hops on; A closes without advancing
+    app.update(0, {{InputEvent::Kind::Lookup, {}, 0}});
+    REQUIRE(app.lookup().is_open());
+    const std::size_t first = app.lookup().start();
+    CHECK(first <= iku);
+    app.update(0, {{InputEvent::Kind::Nav, {}, static_cast<std::size_t>(NavDir::Right)}});
+    CHECK(app.lookup().start() >= first);
+    app.update(0, {{InputEvent::Kind::Advance, {}, 0}});
+    CHECK(!app.lookup().is_open());
+    CHECK_EQ(app.player()->backlog().size(), lines);
+    // the log: Y looks up its newest entry on screen; LOG again closes the popup (and the log)
+    app.update(0, {{InputEvent::Kind::OpenLog, {}, 0}});
+    app.update(0, {{InputEvent::Kind::Lookup, {}, 0}});
+    CHECK(app.lookup().is_open());
+    CHECK(app.lookup().target_id() > 0);
+    app.update(0, {{InputEvent::Kind::OpenLog, {}, 0}});
+    CHECK(!app.lookup().is_open());
+    // the smoke helper finds text in the line
+    CHECK(app.lookup_text("行って"));
+    CHECK_EQ(app.lookup().start(), iku);
+}
+
+TEST(app_without_a_dictionary_says_so) {
+    Env env;
+    fakes::MemFiles user;
+    env.platform.user = &user;
+    AppConfig cfg;
+    cfg.region = Region::JP;
+    cfg.script_ids = {"0100000011"};
+    App app(env.platform, cfg);
+    REQUIRE(play_jp_until(app, "行ってしまいました"));
+    app.update(0, {{InputEvent::Kind::Lookup, {}, 0}});
+    CHECK(!app.lookup().is_open());
+    bool logged = false;
+    for (const std::string& l : env.log.lines) logged = logged || l.find("dict.bin") != std::string::npos;
+    CHECK(logged);
 }

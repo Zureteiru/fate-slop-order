@@ -47,6 +47,12 @@ private:
     std::unordered_map<char32_t, Glyph> glyphs_;
 };
 
+// Where one revealed character of laid-out text sits on the stage (for dictionary lookups).
+struct GlyphBox {
+    Rect rect;  // stage units: the character's advance by its line's height
+    char32_t cp = 0;
+};
+
 struct TextStyleBox {
     Rect box;                 // stage units
     float px = 20;            // font size for scale 1
@@ -56,6 +62,7 @@ struct TextStyleBox {
     Color ink{1, 1, 1, 1};
     Color shadow{0, 0, 0, 0};  // drop shadow under each glyph; alpha 0 = none
     Vec2 shadow_offset{2, 2};
+    std::vector<GlyphBox>* boxes = nullptr;  // when set, draw_text appends a box per drawn character
 };
 
 struct TextLayoutResult {

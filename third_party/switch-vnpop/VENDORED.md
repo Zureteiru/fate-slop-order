@@ -13,3 +13,4 @@
 **Do not edit these files.** Make changes upstream, then re-copy and update the commit hash above.
 
 The project was renamed to Safir (public `jenduis/safir`) on 2026-11-05. If the dictionary moves on there, re-vendor from Safir and update this note.
+Checked 2026-11-07: this code is the same as Safir v0.1 (`54f8088`) apart from the vnpop → safir renaming.

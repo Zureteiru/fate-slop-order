@@ -243,6 +243,7 @@ TextLayoutResult draw_text(GlyphAtlas& atlas, const RichText& text, std::size_t 
             const float scale = it.px * k_raster;
             const float adv = item_width(atlas, it);
             if (it.glyph_index < shown && !it.image) {
+                if (st.boxes) st.boxes->push_back({{x, baseline - it.px * 1.1f, adv, it.px * 1.4f}, it.cp});
                 const GlyphAtlas::Glyph& g = atlas.glyph(it.cp);
                 if (!g.empty) {
                     const Rect dst{x + g.x0 * scale, baseline + g.y0 * scale, g.src.w * scale, g.src.h * scale};

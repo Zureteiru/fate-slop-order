@@ -7,6 +7,7 @@
 
 #include "vnr/player.h"
 #include "vnr/rt/draw_list.h"
+#include "vnr/rt/lookup.h"
 #include "vnr/rt/text.h"
 
 namespace vnr::rt {
@@ -40,7 +41,9 @@ public:
     bool release(Vec2 p);
     bool dragging() const { return dragging_; }
 
-    void draw(const std::vector<BacklogEntry>& entries, GlyphAtlas& atlas, DrawList& out) const;
+    // With `targets`, each drawn entry's characters are appended there (dictionary lookups).
+    void draw(const std::vector<BacklogEntry>& entries, GlyphAtlas& atlas, DrawList& out,
+              std::vector<LookupTarget>* targets = nullptr) const;
     const BacklogStyle& style() const { return st_; }
 
 private:

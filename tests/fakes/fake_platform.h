@@ -62,6 +62,7 @@ inline vnr::rt::HttpResult serve_fixture(const std::string& dir, const vnr::rt::
         {"/NA/Script/01/0100000010.txt", "", "NA_0100000010.txt"},
         {"/NA/Script/01/0100000011.txt", "", "NA_0100000011.txt"},
         {"/NA/Script/01/0100081810.txt", "", "NA_0100081810.txt"},
+        {"/JP/Script/01/0100000011.txt", "", "JP_0100000011.txt"},
         {"/NA/CharaFigure/98001000/98001000_merged.png", "", "98001000_merged.png"},
         {"/NA/CharaFigure/98004000/98004000_merged.png", "", "98004000_merged.png"},
         {"/NA/CharaFigure/98001000/98001000.png", "0-31", "body_98001000.bin"},

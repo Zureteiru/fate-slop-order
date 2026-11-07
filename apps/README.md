@@ -68,7 +68,7 @@ vnreader.exe --no-audio   # no sound device (the mixer still runs in real time, 
 | click / Space / Enter / → / A / d-pad → | advance |
 | right click / Backspace / ← / B / d-pad ← | back |
 | click a choice, or 1–9 | choose |
-| click AUTO / `A` key / Y | toggle auto |
+| click AUTO / `A` key / − (Select) | toggle auto |
 | click LOG / `L` / X | open the log |
 | in the log: wheel, drag, ↑ ↓ PgUp PgDn, d-pad ↑ ↓, sticks | scroll |
 | in the log: click, Esc, right click / B, Space / A | close the log |
@@ -81,6 +81,34 @@ vnreader.exe --no-audio   # no sound device (the mixer still runs in real time, 
 | `-` / `=` | master volume down / up (10% steps) |
 | `M` | mute / unmute |
 | Esc / Start | back to the chapter page (from the picker's home: quit; with `--scripts`: quit) |
+| hold Shift over a word (dialogue or log) | dictionary popup for that word (see "Dictionary") |
+| Y | dictionary popup on the first word of the line (in the log: its newest entry on screen); Y again closes it |
+| with the popup open: ← → / d-pad ← → | previous / next word |
+| with the popup open: ↑ ↓ / d-pad ↑ ↓, wheel, sticks | previous / next entry |
+| with the popup open: click outside, Space / A, Esc / B | close it (nothing else happens) |
+
+## Dictionary
+
+Word lookups use the vendored vnpop dictionary (`third_party/switch-vnpop`, the same code as Safir v0.1),
+wrapped by `runtime/src/lookup.cpp`. The packed dictionary is `<user folder>/dict.bin`, never committed:
+
+```bash
+tools/install_dict.sh ../safir/dist/dict.bin        # Safir's JMdict pack (sha256 checked)
+tools/install_dict.sh jmdict_english.zip            # or pack Yomitan zips with dict_packer.py
+```
+
+It is read into memory on the first lookup (25 MB for JMdict). Without it, a lookup shows "No dictionary".
+- **Choosing a word:** `draw_text` records a box per drawn character (`TextStyleBox::boxes`); the App keeps
+  the dialogue's and the open log's boxes from the last frame. Shift + mouse (PC) looks up the word under
+  the pointer, as Yomitan does; Y (Switch / gamepad) starts on the first dictionary word, and ← → hop between
+  words (vnpop's tokenizer). Lookups run from that character over at most 128 characters (vnpop's line).
+- **Popup:** drawn in Hoshi Reader's style (its `popup.css`): a light rounded panel, the reading over a
+  large headword, grey pills for the inflections undone, a blue Freq chip (JMdict rank), then a rounded
+  "▼ JMdict" box with part-of-speech pills and numbered senses, glosses split by " | ". The looked-up
+  characters get a grey box. The popup sits above the dialogue (above or below a log entry) and pages
+  by entry (↑ ↓), as the DrawList cannot clip text; "1 / 7" counts the entries. The story waits while it
+  is open. Pitch accent is not shown: vnpop's entry list does not carry it.
+- **Smoke:** `vnreader.exe --region JP --scripts 0100000010,0100000011 --smoke 0 --until "行ってしまいました" --lookup "行って" --screenshot shot.bmp`.
 
 ## Chapter picker
 

@@ -8,6 +8,7 @@
 
 #include "vnr/rt/json.h"
 #include "vnr/rt/picker.h"
+#include "vnr/script_lines.h"
 
 namespace vnr::rt {
 
@@ -330,8 +331,102 @@ void App::choose(std::size_t index) {
     if (player_->choose(index) && choice_sound_) audio_.play_ui("choice", choice_sound_, kChoiceSoundVolume);
 }
 
+bool App::ensure_dict() {
+    if (dict_.loaded()) return true;
+    if (!dict_tried_) {  // read once: a missing or bad file is not re-read on every press
+        dict_tried_ = true;
+        std::vector<std::uint8_t> bytes;
+        if (!platform_.user || !platform_.user->read(kDictKey, bytes))
+            platform_.log.write("dictionary: no dict.bin in the user folder (tools/install_dict.sh)");
+        else if (!dict_.load(std::move(bytes)))
+            platform_.log.write("dictionary: dict.bin is not a vnpop dictionary");
+        if (dict_.loaded()) return true;
+    }
+    toast("No dictionary (tools/install_dict.sh)");
+    return false;
+}
+
+bool App::handle_lookup(const InputEvent& e) {
+    using K = InputEvent::Kind;
+    if (swallow_pointer_ && (e.kind == K::PointerMove || e.kind == K::PointerUp)) {
+        if (e.kind == K::PointerUp) swallow_pointer_ = false;
+        return true;
+    }
+    if (e.kind == K::LookupAt) {
+        if (lookup_.contains(e.pos)) return true;  // moving onto the popup keeps it
+        const std::vector<LookupTarget> story{story_target()};
+        for (const LookupTarget& t : log_.is_open() ? log_targets_ : story) {
+            const int i = box_at(t.boxes, e.pos);
+            if (i < 0) continue;
+            if (lookup_.is_open() && lookup_.target_id() == t.id && lookup_.start() == static_cast<std::size_t>(i))
+                return true;
+            if (ensure_dict()) lookup_.open(dict_, t, static_cast<std::size_t>(i));  // closes when nothing matches
+            return true;
+        }
+        lookup_.close();  // Shift over no text
+        return true;
+    }
+    if (e.kind == K::Lookup) {
+        if (lookup_.is_open()) {
+            lookup_.close();
+            return true;
+        }
+        if (!ensure_dict()) return true;
+        if (log_.is_open()) {  // the lowest entry on screen: the newest one shown
+            const LookupTarget* best = nullptr;
+            for (const LookupTarget& t : log_targets_)
+                if (!t.boxes.empty() && (!best || t.boxes.back().rect.y > best->boxes.back().rect.y)) best = &t;
+            if (best) lookup_.open_first(dict_, *best);
+        } else {
+            lookup_.open_first(dict_, story_target());
+        }
+        if (!lookup_.is_open()) toast("No dictionary words here");
+        return true;
+    }
+    if (!lookup_.is_open()) return false;
+    switch (e.kind) {
+        case K::Nav:
+            switch (static_cast<NavDir>(e.index)) {
+                case NavDir::Left: lookup_.hop(dict_, -1); break;
+                case NavDir::Right: lookup_.hop(dict_, +1); break;
+                case NavDir::Up: lookup_.select(-1); break;
+                case NavDir::Down: lookup_.select(+1); break;
+            }
+            return true;
+        case K::Scroll: lookup_.scroll(e.pos.y); return true;
+        case K::Pointer:  // a press outside the popup closes it (and does nothing else)
+            if (!lookup_.contains(e.pos)) lookup_.close();
+            swallow_pointer_ = true;
+            return true;
+        case K::PointerMove:
+        case K::PointerUp: return true;
+        case K::Advance:
+        case K::Back:
+        case K::Cancel: lookup_.close(); return true;
+        case K::VolumeDown:
+        case K::VolumeUp:
+        case K::Mute: return false;  // handled before; keeps the popup
+        default:  // LOG, AUTO, save keys...: close the popup and do their usual thing
+            lookup_.close();
+            return false;
+    }
+}
+
+bool App::lookup_text(const std::string& text) {
+    std::vector<char32_t> needle;
+    for (std::size_t i = 0; i < text.size();) needle.push_back(utf8::next(text, i));
+    if (needle.empty() || !ensure_dict()) return false;
+    for (std::size_t s = 0; s + needle.size() <= story_boxes_.size(); ++s) {
+        std::size_t k = 0;
+        while (k < needle.size() && story_boxes_[s + k].cp == needle[k]) ++k;
+        if (k == needle.size()) return lookup_.open(dict_, story_target(), s);
+    }
+    return false;
+}
+
 void App::handle(const InputEvent& e) {
     if (!player_) return;
+    if (handle_lookup(e)) return;
     if (e.kind == InputEvent::Kind::Nav) {  // arrows / d-pad while reading: as before the picker existed
         InputEvent t = e;
         switch (static_cast<NavDir>(e.index)) {
@@ -415,6 +510,8 @@ void App::handle(const InputEvent& e) {
         case InputEvent::Kind::VolumeUp:
         case InputEvent::Kind::Mute:
         case InputEvent::Kind::DeleteSave:
+        case InputEvent::Kind::LookupAt:  // handle_lookup() takes these
+        case InputEvent::Kind::Lookup:
             break;
     }
 }
@@ -613,6 +710,7 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
                 quit_ = true;
                 break;
             }
+    if (phase_ != Phase::Playing) lookup_.close();
     switch (phase_) {
         case Phase::Picker: {
             picker_->update(dt);
@@ -658,7 +756,9 @@ void App::update(double dt, const std::vector<InputEvent>& input) {
             }
             if (phase_ != Phase::Playing) break;
             // the log and the save screen pause the story (and auto mode), not the sound
-            if (!log_.is_open() && !save_screen_.is_open()) player_->update(dt);
+            // the popup closes when the text it is on goes away (the log opened or closed)
+            if (lookup_.is_open() && (lookup_.target_id() == 0) == log_.is_open()) lookup_.close();
+            if (!log_.is_open() && !save_screen_.is_open() && !lookup_.is_open()) player_->update(dt);
             play_audio_events();
             if (player_->status() == Status::Ended) start_script(script_index_ + 1);
             track_autosave(dt);
@@ -688,8 +788,13 @@ void App::render() {
             frame_start_ = scene_.clock;
         }
         scene_.picture_frame_opacity = static_cast<float>(std::clamp((scene_.clock - frame_start_) / 0.2, 0.0, 1.0));
+        story_boxes_.clear();
+        scene_.text_boxes = &story_boxes_;
         render_scene(*player_, scene_, atlas_, ui_, draw_);
-        log_.draw(player_->backlog(), atlas_, draw_);
+        scene_.text_boxes = nullptr;
+        log_targets_.clear();
+        log_.draw(player_->backlog(), atlas_, draw_, log_.is_open() ? &log_targets_ : nullptr);
+        lookup_.draw(atlas_, draw_);
         save_screen_.draw(saves_, cache_, atlas_, draw_);
         if (toast_left_ > 0 && !toast_.empty()) {
             const RichText msg = parse_rich_text(toast_, {});

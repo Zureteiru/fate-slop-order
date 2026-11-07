@@ -503,6 +503,7 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
         tb.max_lines = ui.visible_lines;
         tb.ink = kInk;
         tb.shadow = kShadow;
+        tb.boxes = a.text_boxes;
         draw_text(atlas, tv.say->text, tv.shown, tb, out);
         draw_story_buttons(a, ui, ms, out);
         draw_save_buttons(ui, ms, atlas, out);

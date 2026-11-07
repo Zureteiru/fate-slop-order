@@ -10,6 +10,7 @@
 //            [--wipe 0.5]       (smoke: stop mid-wipe once the cover reaches this value)
 //            [--chara-fx 0.5]   (smoke: stop mid charaSpecialEffect at this progress)
 //            [--log] [--auto]   (smoke: open the LOG screen / turn AUTO on before the capture)
+//            [--lookup "text"]  (smoke: open the dictionary popup on "text" in the line before the capture)
 //            [--no-audio]       (no sound device; the mixer still runs, so voice waits keep their timing)
 #include <cmath>
 #include <cstdio>
@@ -99,6 +100,7 @@ int main(int argc, char** argv) {
     bool matched = false;
     bool open_log = false, auto_on = false, no_audio = false, scripts_given = false;
     std::string picker_shot;
+    std::string lookup_word;  // --lookup
     std::string load_slot, save_screen;  // --load auto|quick|<1-30>, --savescreen save|load
     bool quick_save = false;
     for (int i = 1; i < argc; ++i) {
@@ -116,6 +118,7 @@ int main(int argc, char** argv) {
         else if (a == "--no-audio") no_audio = true;
         else if (a == "--load" && i + 1 < argc) load_slot = argv[++i];
         else if (a == "--savescreen" && i + 1 < argc) save_screen = argv[++i];
+        else if (a == "--lookup" && i + 1 < argc) lookup_word = argv[++i];
         else if (a == "--quicksave") quick_save = true;
     }
 
@@ -225,6 +228,8 @@ int main(int argc, char** argv) {
                     if (quick_save) input.push_back({rt::InputEvent::Kind::QuickSave, {}, 0});
                     if (save_screen == "save") input.push_back({rt::InputEvent::Kind::OpenSave, {}, 0});
                     if (save_screen == "load") input.push_back({rt::InputEvent::Kind::OpenLoad, {}, 0});
+                    if (!lookup_word.empty() && !app.lookup_text(lookup_word))
+                        std::fprintf(stderr, "[vnreader] --lookup: no entry for \"%s\" in this line\n", lookup_word.c_str());
                 }
             }
             if (smoke >= 0 && app.phase() == rt::App::Phase::Finished) running = false;

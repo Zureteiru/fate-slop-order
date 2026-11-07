@@ -25,6 +25,16 @@ else()
     add_compile_options(-Wall -Wextra)
 endif()
 
+# ---- vendored dictionary (third_party/switch-vnpop, do not edit): word lookups in runtime/src/lookup.cpp
+set(VNPOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/switch-vnpop)
+add_library(vnpop_dict STATIC
+    ${VNPOP_DIR}/core/dict/vnpop_dict.c
+    ${VNPOP_DIR}/core/dict/vnpop_deinflect.c
+    ${VNPOP_DIR}/core/dict/vnpop_inflate.c
+    ${VNPOP_DIR}/core/vnpop_ledger.c
+)
+target_include_directories(vnpop_dict PUBLIC ${VNPOP_DIR}/include ${VNPOP_DIR}/core/dict)
+
 # ---- core/: pure C++17 script engine
 add_library(vnr_core STATIC
     core/src/script_lines.cpp
@@ -62,13 +72,14 @@ add_library(vnr_runtime STATIC
     runtime/src/picker.cpp
     runtime/src/scene_render.cpp
     runtime/src/text.cpp
+    runtime/src/lookup.cpp
     runtime/src/ui_skin.cpp
     runtime/src/stb_impl.cpp
 )
 target_include_directories(vnr_runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/runtime/include
                                        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb)
 target_include_directories(vnr_runtime SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/dr_libs)
-target_link_libraries(vnr_runtime PUBLIC vnr_core)
+target_link_libraries(vnr_runtime PUBLIC vnr_core PRIVATE vnpop_dict)
 # vendored stb / dr_mp3: third-party code, compiled without project warnings
 if(MSVC)
     set_source_files_properties(runtime/src/stb_impl.cpp runtime/src/dr_mp3_impl.cpp PROPERTIES COMPILE_OPTIONS "/W0")
@@ -77,16 +88,7 @@ else()
 endif()
 
 if(VNR_TARGET STREQUAL "host")
-    # ---- vendored dictionary (third_party/switch-vnpop, do not edit) and its tests
-    set(VNPOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/switch-vnpop)
-    add_library(vnpop_dict STATIC
-        ${VNPOP_DIR}/core/dict/vnpop_dict.c
-        ${VNPOP_DIR}/core/dict/vnpop_deinflect.c
-        ${VNPOP_DIR}/core/dict/vnpop_inflate.c
-        ${VNPOP_DIR}/core/vnpop_ledger.c
-    )
-    target_include_directories(vnpop_dict PUBLIC ${VNPOP_DIR}/include ${VNPOP_DIR}/core/dict)
-
+    # ---- tests of the vendored dictionary
     enable_testing()
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     foreach(fixture test_yomitan_fixture:test_dict test_long_run:test_long_run)
@@ -128,7 +130,8 @@ if(VNR_TARGET STREQUAL "host")
     add_executable(runtime_tests tests/core_main.cpp tests/runtime_tests.cpp tests/audio_tests.cpp tests/picker_tests.cpp)
     target_include_directories(runtime_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
     target_link_libraries(runtime_tests PRIVATE vnr_runtime)
-    target_compile_definitions(runtime_tests PRIVATE VNR_FIXTURE_DIR="${FIXTURES}")
+    target_compile_definitions(runtime_tests PRIVATE VNR_FIXTURE_DIR="${FIXTURES}" VNR_TEST_DICT="${CMAKE_BINARY_DIR}/test_dict.bin")
+    add_dependencies(runtime_tests test_dicts)
     add_test(NAME runtime_tests COMMAND runtime_tests)
 
     # Host inspection tool (not part of core).

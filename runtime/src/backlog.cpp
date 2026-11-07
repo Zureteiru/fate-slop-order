@@ -69,7 +69,8 @@ bool Backlog::release(Vec2 p) {
     return tap;
 }
 
-void Backlog::draw(const std::vector<BacklogEntry>& entries, GlyphAtlas& atlas, DrawList& out) const {
+void Backlog::draw(const std::vector<BacklogEntry>& entries, GlyphAtlas& atlas, DrawList& out,
+                   std::vector<LookupTarget>* targets) const {
     if (!open_) return;
     out.rect({0, 0, static_cast<float>(kStageWidth), static_cast<float>(kStageHeight)}, {0, 0, 0, st_.dim});
 
@@ -104,6 +105,10 @@ void Backlog::draw(const std::vector<BacklogEntry>& entries, GlyphAtlas& atlas, 
         tb.box.y = y + static_cast<float>(first) * st_.line_height + st_.baseline - st_.text_px;
         tb.first_line = first;
         tb.max_lines = count;
+        if (targets) {
+            targets->push_back({static_cast<int>(1 + i), {}});
+            tb.boxes = &targets->back().boxes;
+        }
         draw_text(atlas, entries[i].text, entries[i].text.glyph_count, tb, out);
     }
 
