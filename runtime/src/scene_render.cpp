@@ -404,6 +404,7 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
     draw_elements(st, a, t, out);
     apply_camera_filter(st.camera, a, stage_first, out);
     draw_picture_frame(st, a, out);
+    if (st.title_card) draw_title_card(*st.title_card, a.titles, atlas, out);
 
     // screen layer (no camera)
     const Rect full{0, 0, kW, kH};

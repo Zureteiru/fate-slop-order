@@ -181,6 +181,16 @@ TEST(section_becomes_a_part_in_the_wanted_region) {
     CHECK(!part_for(*cat, "alpha", 1, Region::NA).has_value());  // locked
     CHECK(!part_for(*cat, "alpha", 9, Region::NA).has_value());
     CHECK(!part_for(*cat, "nope", 0, Region::NA).has_value());
+    // title card texts (Fate Café): chapter label + long name; "Section N" (dai N setsu in JP) + section name
+    p = part_for(*cat, "alpha", 0, Region::NA);
+    CHECK_EQ(p->chapter_label, "Prologue");
+    CHECK_EQ(p->chapter_title, "Long Alpha");
+    CHECK(p->section_label.empty());  // no section number
+    CHECK_EQ(p->section_title, "Opening");
+    const auto na3 = part_for(*cat, "alpha", 3, Region::NA), jp3 = part_for(*cat, "alpha", 3, Region::JP);
+    REQUIRE(na3 && jp3);
+    CHECK_EQ(na3->section_label, "Section 3");
+    CHECK_EQ(jp3->section_label, "\xE7\xAC\xAC" "3" "\xE7\xAF\x80");
 }
 
 TEST(progress_round_trips_and_picks_the_next_unread) {

@@ -12,6 +12,7 @@
 #include "vnr/rt/layer_mask.h"
 #include "vnr/rt/ui_skin.h"
 #include "vnr/rt/special_mask.h"
+#include "vnr/rt/title_card.h"
 #include "vnr/rt/wipe_mask.h"
 
 #ifndef VNR_FIXTURE_DIR
@@ -876,4 +877,46 @@ TEST(camera_blur_and_gray_filter_the_stage_quads) {
     REQUIRE(dl.quads.size() == 9);  // the quad plus 8 offset copies
     CHECK_NEAR(dl.quads[8].color.a, 1.f / 9, 1e-4);  // the last copy weighs 1/9: an even average
     CHECK_NEAR(std::hypot(dl.quads[1].pos[0].x, dl.quads[1].pos[0].y), 4, 1e-3);
+}
+
+TEST(title_card_follows_fate_cafe_keyframes) {
+    CHECK_NEAR(title_card_opacity(0), 0, 1e-6);
+    CHECK_NEAR(title_card_opacity(0.1f), 0.5f, 0.01f);  // ease-in-out halfway up
+    CHECK_NEAR(title_card_opacity(0.5f), 1, 1e-6);
+    CHECK_NEAR(title_card_opacity(1), 0, 1e-6);
+    CHECK_NEAR(title_card_open(0), 0, 1e-6);
+    CHECK(title_card_open(0.05f) > 0.4f);  // cubic-bezier(.2,.7,.2,1): opens fast
+    CHECK_NEAR(title_card_open(0.3f), 1, 1e-6);
+    Env env;
+    TextureStore tex;
+    GlyphAtlas atlas(tex, env.platform.font, 0);
+    REQUIRE(atlas.ok());
+    TitleCard card{false, "bit_queststart", 1.3, 2.6};
+    DrawList dl;
+    draw_title_card(card, {}, atlas, dl);
+    CHECK(dl.quads.empty());  // nothing to say: no card
+    draw_title_card(card, {"PROLOGUE", "Long", "Section 3", "Opening"}, atlas, dl);
+    REQUIRE(dl.quads.size() > 9);
+    // the band: three gradient strips centred on the view, .62 black in the middle
+    const Rect band{dl.quads[0].pos[0].x, dl.quads[0].pos[0].y, dl.quads[2].pos[1].x - dl.quads[0].pos[0].x,
+                    dl.quads[0].pos[3].y - dl.quads[0].pos[0].y};
+    CHECK_NEAR(band.x, kViewSafeLeft, 0.01f);
+    CHECK_NEAR(band.w, kViewSafeWidth, 0.01f);
+    CHECK_NEAR(band.y + band.h / 2, kViewTop + kViewHeight / 2, 0.01f);
+    CHECK_NEAR(band.h, 26 + 26 * 1.2f + 6 + 46 * 1.25f + 30, 0.01f);  // section padding, label, title
+    CHECK_NEAR(dl.quads[1].colors[0].a, 0.62f, 1e-4);
+}
+
+TEST(title_card_wraps_long_titles) {
+    Env env;
+    TextureStore tex;
+    GlyphAtlas atlas(tex, env.platform.font, 0);
+    REQUIRE(atlas.ok());
+    TitleCard card{true, "bit_chapterstart", 1.3, 2.6};
+    DrawList dl;
+    draw_title_card(card, {"Lostbelt No.3", "Synthesis Empire SIN: Land of Unfulfilled Ambition", "", ""}, atlas, dl);
+    const float h = dl.quads[0].pos[3].y - dl.quads[0].pos[0].y;
+    CHECK_NEAR(h, 40 + 26 * 1.2f + 6 + 2 * 54 * 1.25f + 44, 0.01f);  // two title lines
+    for (const Quad& q : dl.quads)
+        for (const Vec2& p : q.pos) CHECK(p.x >= kViewSafeLeft - 0.01f && p.x <= kViewSafeLeft + kViewSafeWidth + 0.01f);
 }

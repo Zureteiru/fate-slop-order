@@ -69,6 +69,7 @@ std::string App::status() const {
 
 void App::start_part(const PartChoice& part) {
     part_ = part;
+    scene_.titles = {part.chapter_label, part.chapter_title, part.section_label, part.section_title};
     config_.region = part.region;
     config_.script_ids = part.script_ids;
     script_text_.clear();

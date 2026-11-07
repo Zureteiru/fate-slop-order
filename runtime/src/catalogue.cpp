@@ -76,7 +76,8 @@ std::optional<Catalogue> parse_catalogue(std::string_view text) {
         ch.id = c["id"].string();
         if (ch.id.empty()) continue;
         ch.arc_id = c["arcId"].string();
-        ch.label = upper_ascii(pick(c, "sourceChapterLabel", "chapterLabel"));
+        ch.label_as_written = pick(c, "sourceChapterLabel", "chapterLabel");
+        ch.label = upper_ascii(ch.label_as_written);
         ch.name = pick(c, "sourceName", "name");
         ch.long_name = pick(c, "sourceLongName", "longName");
         ch.banner_url = c["bannerUrl"].string();
@@ -171,6 +172,12 @@ std::optional<PartChoice> part_for(const Catalogue& cat, std::string_view chapte
     p.chapter_id = ch->id;
     p.section = section;
     p.label = s.label();
+    p.chapter_label = ch->label_as_written;
+    p.chapter_title = ch->long_name.empty() ? ch->name : ch->long_name;
+    if (s.number > 0)
+        p.section_label = wanted == Region::JP ? "\xE7\xAC\xAC" + std::to_string(s.number) + "\xE7\xAF\x80"  // dai N setsu
+                                               : "Section " + std::to_string(s.number);
+    p.section_title = s.name;
     p.region = wanted;
     if (wanted == Region::NA)
         for (const auto& sc : s.scripts)

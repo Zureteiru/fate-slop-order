@@ -47,6 +47,7 @@ struct CatalogueChapter {
     std::string id;              // "fuyuki"
     std::string arc_id;
     std::string label;           // "PROLOGUE" source: `sourceChapterLabel`
+    std::string label_as_written;  // "Prologue": the same label in its own case (title cards)
     std::string name;            // "Singularity F"
     std::string long_name;       // "Flame Contaminated City: Fuyuki"
     std::string banner_url;
@@ -89,6 +90,8 @@ struct PartChoice {
     Region region = Region::NA;
     std::vector<std::string> script_ids;
     std::string label;           // for the end card
+    // Title cards (Fate Café): chapter = catalogue label + long name; section = "Section N" / 第N節 + name.
+    std::string chapter_label, chapter_title, section_label, section_title;
 };
 
 // The scripts of a section in the wanted language. NA falls back to JP when any script has no

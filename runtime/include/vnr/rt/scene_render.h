@@ -12,6 +12,7 @@
 #include "vnr/rt/layer_mask.h"
 #include "vnr/rt/text.h"
 #include "vnr/rt/ui_skin.h"
+#include "vnr/rt/title_card.h"
 #include "vnr/rt/wipe_mask.h"
 
 namespace vnr::rt {
@@ -32,6 +33,7 @@ struct SceneAssets {
     bool auto_mode = false;  // AUTO button lit
     std::map<std::string, LayerMask> masks;  // subCameraFilter mask images, by name (decoded by the App)
     WipeLayer wipe, wipe_filter;             // this frame's wipe masks (WipeMasks, owned by the App)
+    TitleTexts titles;                       // what bit_chapterstart / bit_queststart cards say
     float picture_frame_opacity = 1;         // pictureFrame fade-in (Fate Café: 0.2 s), kept by the App
 };
 
