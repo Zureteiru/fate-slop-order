@@ -43,6 +43,9 @@ struct InputEvent {
 inline constexpr const char* kGameFontKey = "fonts/FOT-SkipStd-B.otf";
 // Optional user settings (volumes for now), in the user folder.
 inline constexpr const char* kSettingsKey = "settings.json";
+// The choice click (tools/install_choice_sound.sh), in the user folder. Never committed.
+inline constexpr const char* kChoiceSoundKey = "sfx/choice.mp3";
+inline constexpr float kChoiceSoundVolume = 0.5f;
 
 struct AppConfig {
     Region region = Region::NA;
@@ -79,6 +82,7 @@ private:
     TextureStore textures_;
     AssetCache cache_;
     AudioDirector audio_;
+    SharedBytes choice_sound_;  // null when not installed
     struct FontChoice {
         std::vector<std::uint8_t> bytes;  // freed once the atlas has its own copy
         int index = 0;
@@ -110,6 +114,7 @@ private:
     void handle_log(const InputEvent& e);
     void handle_volume(const InputEvent& e);
     void play_audio_events();
+    void choose(std::size_t index);
     void render();
 };
 

@@ -91,6 +91,11 @@ BGM, sound effects and voices play through a software mixer in `runtime/` (`audi
   the main loop.
 - **Volumes:** `-` / `=` / `M` while reading, or `settings.json` in the user folder (values 0–1):
   `{"volume": {"master": 0.8, "bgm": 1, "se": 1, "voice": 1}}`.
+- **Choice click:** picking a choice plays `<user folder>/sfx/choice.mp3` at half SE volume, on its own bus so
+  script `soundStopAll` doesn't cut it. The game ships this sound inside the app (Atlas doesn't host it), so
+  it is installed like the UI sheets and never committed: `bash tools/install_choice_sound.sh path/to/fgochoice.mp3`
+  (the reference copy is Fate Café's `fgochoice.mp3`; the script checks its SHA-256 and accepts any MP3).
+  Without it, choices are silent.
 - **Movies** are not played yet: they are logged and count as finished at once.
 
 ## Game UI art

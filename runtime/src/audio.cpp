@@ -282,12 +282,23 @@ void AudioDirector::on_back() {
     mixer_.stop_bus(Bus::Se, 0.2);
 }
 
+void AudioDirector::play_ui(const std::string& name, const SharedBytes& bytes, float volume) {
+    auto src = Mp3Source::open(bytes);
+    if (!src) {
+        log_.write("audio: " + name + " could not be decoded");
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mu_);
+    mixer_.stop_named(Bus::Ui, name, 0);  // quick repeats restart the click
+    mixer_.play(Bus::Ui, std::move(src), {name, volume, 0, false});
+}
+
 void AudioDirector::stop_all(double fade) {
     pending_.clear();
     voice_id_ = 0;
     voice_done_ = false;
     std::lock_guard<std::mutex> lock(mu_);
-    for (Bus b : {Bus::Bgm, Bus::Se, Bus::Voice}) mixer_.stop_bus(b, fade);
+    for (Bus b : {Bus::Bgm, Bus::Se, Bus::Voice, Bus::Ui}) mixer_.stop_bus(b, fade);
 }
 
 void AudioDirector::set_volumes(const AudioVolumes& v) {
@@ -298,6 +309,7 @@ void AudioDirector::set_volumes(const AudioVolumes& v) {
     mixer_.set_bus_volume(Bus::Bgm, clamp(v.bgm));
     mixer_.set_bus_volume(Bus::Se, clamp(v.se));
     mixer_.set_bus_volume(Bus::Voice, clamp(v.voice));
+    mixer_.set_bus_volume(Bus::Ui, clamp(v.se));
     mixer_.set_muted(v.muted);
 }
 
@@ -309,6 +321,11 @@ std::string AudioDirector::bgm_playing() const {
 std::size_t AudioDirector::se_playing() const {
     std::lock_guard<std::mutex> lock(mu_);
     return mixer_.active(Bus::Se);
+}
+
+std::size_t AudioDirector::ui_playing() const {
+    std::lock_guard<std::mutex> lock(mu_);
+    return mixer_.active(Bus::Ui);
 }
 
 bool AudioDirector::voice_playing() const {

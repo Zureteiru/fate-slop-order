@@ -46,6 +46,8 @@ public:
     void update(double dt);                  // downloads, delayed starts, finished sounds
     bool take_voice_finished();              // true once after the current voice ended (or failed)
     void stop_all(double fade);
+    // An app sound already in memory (e.g. the choice click), on the Ui bus.
+    void play_ui(const std::string& name, const SharedBytes& bytes, float volume);
     void set_volumes(const AudioVolumes& v);
     const AudioVolumes& volumes() const { return volumes_; }
 
@@ -53,6 +55,7 @@ public:
     std::string bgm_playing() const;  // the BGM in the mix that is not fading out; empty if none
     std::size_t se_playing() const;
     bool voice_playing() const;
+    std::size_t ui_playing() const;
     std::size_t clips_loading() const;
 
     // ---- any thread

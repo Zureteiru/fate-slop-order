@@ -437,3 +437,33 @@ TEST(app_rewind_restores_the_bgm_and_does_not_replay_ses) {
     tap(InputEvent::Kind::Mute);
     CHECK(app.audio().volumes().muted);
 }
+
+TEST(app_plays_the_choice_click_when_installed) {
+    for (bool installed : {true, false}) {
+        fakes::FakeHttp http;
+        fakes::MemFiles files, user;
+        fakes::MemLog log;
+        if (installed) user.data[kChoiceSoundKey] = se_mp3();  // any MP3 stands in for the click
+        Platform platform{http, files, log, fakes::bytes_of(kDir + "/MPLUS1p-Regular.ttf"), 0, &user};
+        http.handler = [](const HttpRequest& r) {
+            if (r.url.find("/Audio/") != std::string::npos) return HttpResult{0, 200, se_mp3()};
+            return fakes::serve_fixture(kDir, r);
+        };
+        AppConfig cfg;
+        cfg.script_ids = {"0100000011"};
+        App app(platform, cfg);
+        for (int i = 0; i < 300 && app.phase() != App::Phase::Playing; ++i) app.update(1.0 / 60, {});
+        REQUIRE(app.phase() == App::Phase::Playing);
+        for (int guard = 0; guard < 100000 && !app.player()->pending_choice(); ++guard) {
+            const Player* p = app.player();
+            if (p->status() == Status::Typing || p->status() == Status::AwaitAdvance) app.update(0, {{InputEvent::Kind::Advance, {}, 0}});
+            else app.update(drive::kDt, {});
+        }
+        REQUIRE(app.player()->pending_choice() != nullptr);
+        CHECK_EQ(app.audio().ui_playing(), static_cast<std::size_t>(0));
+        app.update(0, {{InputEvent::Kind::Choose, {}, 0}});
+        CHECK_EQ(app.audio().ui_playing(), static_cast<std::size_t>(installed ? 1 : 0));
+        app.audio().handle({AudioEvent::Kind::SeStopAll, {}, {}, 0, 1, false});  // script stops don't cut it
+        CHECK_EQ(app.audio().ui_playing(), static_cast<std::size_t>(installed ? 1 : 0));
+    }
+}

@@ -38,6 +38,9 @@ App::App(Platform& platform, AppConfig config)
     if (platform_.user) {
         std::vector<std::uint8_t> settings;
         if (platform_.user->read(kSettingsKey, settings)) audio_.set_volumes(parse_audio_settings(settings));
+        std::vector<std::uint8_t> click;
+        if (platform_.user->read(kChoiceSoundKey, click) && !click.empty())
+            choice_sound_ = std::make_shared<const std::vector<std::uint8_t>>(std::move(click));
     }
 }
 
@@ -185,6 +188,10 @@ void App::handle_log(const InputEvent& e) {
     }
 }
 
+void App::choose(std::size_t index) {
+    if (player_->choose(index) && choice_sound_) audio_.play_ui("choice", choice_sound_, kChoiceSoundVolume);
+}
+
 void App::handle(const InputEvent& e) {
     if (!player_) return;
     if (log_.is_open()) {
@@ -199,7 +206,7 @@ void App::handle(const InputEvent& e) {
             if (player_->back()) audio_.on_back();  // the BGM of that line follows from the Player
             break;
         case InputEvent::Kind::Choose:
-            player_->choose(e.index);
+            choose(e.index);
             break;
         case InputEvent::Kind::Pointer: {
             const TextView tv = player_->text();
@@ -217,7 +224,7 @@ void App::handle(const InputEvent& e) {
                 for (std::size_t i = 0; i < rects.size(); ++i) {
                     const Rect& r = rects[i];
                     if (e.pos.x >= r.x && e.pos.x <= r.x + r.w && e.pos.y >= r.y && e.pos.y <= r.y + r.h) {
-                        player_->choose(i);
+                        choose(i);
                         break;
                     }
                 }

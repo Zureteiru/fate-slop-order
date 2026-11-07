@@ -42,8 +42,9 @@ private:
     std::size_t pos_ = 0;  // in frames
 };
 
-enum class Bus { Bgm = 0, Se = 1, Voice = 2 };
-constexpr int kBusCount = 3;
+// Ui: the app's own sounds (choice click). Script stop commands never touch it; it follows the SE volume.
+enum class Bus { Bgm = 0, Se = 1, Voice = 2, Ui = 3 };
+constexpr int kBusCount = 4;
 
 using SoundId = std::uint64_t;
 
@@ -108,7 +109,7 @@ private:
         bool primed = false, b_valid = false, eof = false, done = false, ended = false;
     };
     int rate_;
-    float bus_[kBusCount] = {1, 1, 1};
+    float bus_[kBusCount] = {1, 1, 1, 1};
     float master_ = 1;
     bool muted_ = false;
     SoundId next_id_ = 1;
