@@ -49,6 +49,8 @@ PINS=(
 src="${1:--}"
 if [[ $# -ge 2 ]]; then
     dest="$2"
+elif [[ -d "$(dirname "$0")/../userdata" ]]; then
+    dest="$(cd "$(dirname "$0")/../userdata" && pwd)"  # portable: the work folder's userdata
 elif [[ -n "${LOCALAPPDATA:-}" ]]; then
     dest="$LOCALAPPDATA/vnreader"
 else

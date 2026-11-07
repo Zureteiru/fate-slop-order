@@ -11,6 +11,8 @@ KNOWN=01afaf6d6915bcb9bcb58898002cdf2e227ad296988264ca9615130add237673  # Fate C
 src="${1:?usage: $0 <choice sound .mp3> [user dir]}"
 if [[ $# -ge 2 ]]; then
     dest="$2"
+elif [[ -d "$(dirname "$0")/../userdata" ]]; then
+    dest="$(cd "$(dirname "$0")/../userdata" && pwd)"  # portable: the work folder's userdata
 elif [[ -n "${LOCALAPPDATA:-}" ]]; then
     dest="$LOCALAPPDATA/vnreader"
 else

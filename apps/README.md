@@ -132,6 +132,12 @@ BGM, sound effects and voices play through a software mixer in `runtime/` (`audi
 
 ## Game UI art
 
+**User folder:** `%LOCALAPPDATA%\vnreader` on Windows. If a folder named `userdata` sits next to the exe or
+in one of its parents (e.g. the work folder, when running from `build-desktop\...`), the app uses that
+instead, for the cache too, and the install scripts below default to it. It is git-ignored. This
+"portable" folder also avoids Windows redirecting writes into a packaged app's private storage (as happens
+for anything started from the Claude desktop app).
+
 vnreader draws the story screen with the game's own pieces: the text box, the name tab, the choice
 frame and the spinning "next" marker. They come from two sheets of the Spriters Resource
 "Fate/Grand Order → Miscellaneous → User Interface" rip (`003.png`, `030.png`). The sheets are game art,

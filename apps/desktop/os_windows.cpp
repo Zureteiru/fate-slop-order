@@ -136,7 +136,22 @@ private:
 }  // namespace
 
 namespace {
+// Portable data: a `userdata` folder next to the exe or in one of its parents (the work folder, when
+// running from build-desktop/...) holds the user files and the cache instead of %LOCALAPPDATA%.
+std::filesystem::path portable_dir() {
+    wchar_t exe[MAX_PATH] = {};
+    const DWORD n = GetModuleFileNameW(nullptr, exe, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) return {};
+    std::error_code ec;
+    for (std::filesystem::path d = std::filesystem::path(exe).parent_path(); !d.empty(); d = d.parent_path()) {
+        if (std::filesystem::is_directory(d / "userdata", ec)) return d / "userdata";
+        if (d == d.parent_path()) break;
+    }
+    return {};
+}
+
 std::filesystem::path app_dir() {
+    if (const std::filesystem::path p = portable_dir(); !p.empty()) return p;
     char buf[MAX_PATH] = {};
     const DWORD n = GetEnvironmentVariableA("LOCALAPPDATA", buf, MAX_PATH);
     std::filesystem::path p = (n > 0 && n < MAX_PATH) ? std::filesystem::path(buf) : std::filesystem::temp_directory_path();
@@ -151,7 +166,8 @@ std::string ensure(const std::filesystem::path& p) {
 
 std::string cache_dir() { return ensure(app_dir() / "cache"); }
 
-// %LOCALAPPDATA%\vnreader: the key "ui/003.png" is %LOCALAPPDATA%\vnreader\ui\003.png.
+// <work folder>\userdata when it exists (portable), else %LOCALAPPDATA%\vnreader: the key
+// "ui/003.png" is <that folder>\ui\003.png.
 std::string user_dir() { return ensure(app_dir()); }
 
 std::vector<std::string> japanese_font_paths() {

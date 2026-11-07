@@ -9,6 +9,8 @@ set -euo pipefail
 src="${1:?usage: $0 <FOT-Skip Std B.otf> [user dir]}"
 if [[ $# -ge 2 ]]; then
     dest="$2"
+elif [[ -d "$(dirname "$0")/../userdata" ]]; then
+    dest="$(cd "$(dirname "$0")/../userdata" && pwd)"  # portable: the work folder's userdata
 elif [[ -n "${LOCALAPPDATA:-}" ]]; then
     dest="$LOCALAPPDATA/vnreader"
 else

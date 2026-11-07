@@ -7,3 +7,6 @@ scratch/
 # Build output
 build*/
 *.bin
+
+# Portable user data (ripped UI sheets, font, sounds, wipes, cache, progress). Never commit.
+userdata/
