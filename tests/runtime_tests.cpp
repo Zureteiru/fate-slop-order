@@ -625,3 +625,36 @@ TEST(clip_quad_cuts_sprites_along_the_mask_edge) {
     CHECK_EQ(clip_quad(q, {{-10, -10}, {200, -10}, {200, 200}, {-10, 200}}).size(), static_cast<std::size_t>(2));
     CHECK(clip_quad(q, {{200, 200}, {300, 200}, {300, 300}}).empty());
 }
+
+TEST(quad_rotates_about_an_origin) {
+    Quad q;
+    q.pos[0] = {10, 0};
+    q.pos[1] = {20, 0};
+    q.pos[2] = {20, 10};
+    q.pos[3] = {10, 10};
+    rotate(q, {0, 0}, 90);  // clockwise on a y-down screen: +x goes to +y
+    CHECK_NEAR(q.pos[0].x, 0, 1e-4);
+    CHECK_NEAR(q.pos[0].y, 10, 1e-4);
+    CHECK_NEAR(q.pos[2].x, -10, 1e-4);
+    CHECK_NEAR(q.pos[2].y, 20, 1e-4);
+}
+
+TEST(clip_quad_interpolates_corner_colours) {
+    Quad q;
+    q.pos[0] = {0, 0};
+    q.pos[1] = {100, 0};
+    q.pos[2] = {100, 100};
+    q.pos[3] = {0, 100};
+    q.has_colors = true;
+    q.blend = Blend::Add;
+    q.colors[0] = q.colors[1] = {1, 1, 1, 0};  // transparent at the top, opaque at the bottom
+    q.colors[2] = q.colors[3] = {1, 1, 1, 1};
+    // keep the top half only
+    const std::vector<Quad> parts = clip_quad(q, {{-10, -10}, {110, -10}, {110, 50}, {-10, 50}});
+    REQUIRE(!parts.empty());
+    for (const Quad& p : parts) {
+        CHECK(p.has_colors);
+        CHECK(p.blend == Blend::Add);
+        for (int k = 0; k < 3; ++k) CHECK_NEAR(p.colors[k].a, p.pos[k].y / 100, 1e-3);
+    }
+}

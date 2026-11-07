@@ -26,11 +26,20 @@ struct Color {
     float r = 1, g = 1, b = 1, a = 1;
 };
 
+enum class Blend : std::uint8_t {
+    Alpha,  // normal "over" blending
+    Add,    // additive (light: glows, sparks, flashes)
+};
+
 struct Quad {
     TextureId texture = 0;
     Rect src;         // texture pixels (ignored for solid quads)
     Vec2 pos[4];      // stage units: top-left, top-right, bottom-right, bottom-left
     Color color;      // tint / solid colour, alpha = opacity
+    Blend blend = Blend::Alpha;
+    // Per-corner colours instead of `color` (gradients: mask bands, title card fades, glow falloff).
+    bool has_colors = false;
+    Color colors[4];
     // Per-corner texture coordinates (texture pixels) instead of `src`: clipped sprites. A triangle is a
     // quad whose last corner repeats the third.
     bool has_uv = false;
@@ -45,6 +54,11 @@ struct DrawList {
     void rect(const Rect& dst, Color c);
     void image(TextureId tex, const Rect& src, const Rect& dst, Color c = {});
 };
+
+// Rotates a quad's corners about `origin` (stage units) by `degrees`, clockwise on screen (y down).
+void rotate(Quad& q, Vec2 origin, float degrees);
+// Colour of corner k (the per-corner colour when set, otherwise the quad colour).
+inline Color corner_color(const Quad& q, int k) { return q.has_colors ? q.colors[k] : q.color; }
 
 // Pixel data and ids for every texture the runtime uses. The renderer takes pending uploads each
 // frame, creates/updates its GPU textures, then calls uploaded() so CPU pixels can be dropped.

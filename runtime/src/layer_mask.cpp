@@ -30,10 +30,15 @@ std::vector<Vec2> convex_hull(std::vector<Vec2> pts) {
 
 struct Vert {
     Vec2 p, uv;
+    Color c;
 };
 
+float mix(float a, float b, float t) { return a + (b - a) * t; }
+
 Vert lerp(const Vert& a, const Vert& b, float t) {
-    return {{a.p.x + (b.p.x - a.p.x) * t, a.p.y + (b.p.y - a.p.y) * t}, {a.uv.x + (b.uv.x - a.uv.x) * t, a.uv.y + (b.uv.y - a.uv.y) * t}};
+    return {{mix(a.p.x, b.p.x, t), mix(a.p.y, b.p.y, t)},
+            {mix(a.uv.x, b.uv.x, t), mix(a.uv.y, b.uv.y, t)},
+            {mix(a.c.r, b.c.r, t), mix(a.c.g, b.c.g, t), mix(a.c.b, b.c.b, t), mix(a.c.a, b.c.a, t)}};
 }
 
 }  // namespace
@@ -85,7 +90,10 @@ LayerMask build_layer_mask(const Image& img) {
 
 std::vector<Quad> clip_quad(const Quad& q, const std::vector<Vec2>& convex) {
     std::vector<Vert> poly(4);
-    for (int k = 0; k < 4; ++k) poly[k].p = q.pos[k];
+    for (int k = 0; k < 4; ++k) {
+        poly[k].p = q.pos[k];
+        poly[k].c = corner_color(q, k);
+    }
     if (q.has_uv) {
         for (int k = 0; k < 4; ++k) poly[k].uv = q.uv[k];
     } else {
@@ -119,10 +127,12 @@ std::vector<Quad> clip_quad(const Quad& q, const std::vector<Vec2>& convex) {
     for (std::size_t j = 1; j + 1 < poly.size(); ++j) {
         Quad t = q;
         t.has_uv = true;
+        t.has_colors = q.has_colors;
         const Vert* v[4] = {&poly[0], &poly[j], &poly[j + 1], &poly[j + 1]};
         for (int k = 0; k < 4; ++k) {
             t.pos[k] = v[k]->p;
             t.uv[k] = v[k]->uv;
+            t.colors[k] = v[k]->c;
         }
         tris.push_back(t);
     }

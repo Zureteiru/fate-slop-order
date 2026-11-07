@@ -73,14 +73,24 @@ void Renderer::draw(const rt::DrawList& list) {
                   static_cast<int>(kStageWidth * scale_ + 0.5f), static_cast<int>(rt::kViewHeight * scale_ + 0.5f)};
     SDL_RenderSetClipRect(r_, &clip);
 
-    auto flush = [&](SDL_Texture* tex) {
-        if (!indices_.empty())
+    // One batch per run of quads with the same texture and blend mode.
+    auto flush = [&](SDL_Texture* tex, rt::Blend blend) {
+        if (!indices_.empty()) {
+            const SDL_BlendMode mode = blend == rt::Blend::Add ? SDL_BLENDMODE_ADD : SDL_BLENDMODE_BLEND;
+            if (tex) SDL_SetTextureBlendMode(tex, mode);
+            else SDL_SetRenderDrawBlendMode(r_, mode);
             SDL_RenderGeometry(r_, tex, verts_.data(), static_cast<int>(verts_.size()), indices_.data(),
                                static_cast<int>(indices_.size()));
+        }
         verts_.clear();
         indices_.clear();
     };
+    auto to_sdl = [](const rt::Color& c) {
+        return SDL_Color{static_cast<Uint8>(std::clamp(c.r, 0.f, 1.f) * 255), static_cast<Uint8>(std::clamp(c.g, 0.f, 1.f) * 255),
+                         static_cast<Uint8>(std::clamp(c.b, 0.f, 1.f) * 255), static_cast<Uint8>(std::clamp(c.a, 0.f, 1.f) * 255)};
+    };
     rt::TextureId current = 0;
+    rt::Blend current_blend = rt::Blend::Alpha;
     SDL_Texture* current_tex = nullptr;
     for (const rt::Quad& q : list.quads) {
         SDL_Texture* tex = nullptr;
@@ -91,15 +101,12 @@ void Renderer::draw(const rt::DrawList& list) {
             tex = it->second;
             size = sizes_[q.texture];
         }
-        if (q.texture != current) {
-            flush(current_tex);
+        if (q.texture != current || q.blend != current_blend) {
+            flush(current_tex, current_blend);
             current = q.texture;
             current_tex = tex;
+            current_blend = q.blend;
         }
-        const SDL_Color c{static_cast<Uint8>(std::clamp(q.color.r, 0.f, 1.f) * 255),
-                          static_cast<Uint8>(std::clamp(q.color.g, 0.f, 1.f) * 255),
-                          static_cast<Uint8>(std::clamp(q.color.b, 0.f, 1.f) * 255),
-                          static_cast<Uint8>(std::clamp(q.color.a, 0.f, 1.f) * 255)};
         const float u0 = q.src.x / size.x, v0 = q.src.y / size.y;
         const float u1 = (q.src.x + q.src.w) / size.x, v1 = (q.src.y + q.src.h) / size.y;
         SDL_FPoint uv[4] = {{u0, v0}, {u1, v0}, {u1, v1}, {u0, v1}};
@@ -109,13 +116,14 @@ void Renderer::draw(const rt::DrawList& list) {
         for (int k = 0; k < 4; ++k) {
             SDL_Vertex v;
             v.position = {offset_x_ + q.pos[k].x * scale_, offset_y_ + q.pos[k].y * scale_};
-            v.color = c;
+            v.color = to_sdl(rt::corner_color(q, k));
             v.tex_coord = uv[k];
             verts_.push_back(v);
         }
         for (int i : {0, 1, 2, 0, 2, 3}) indices_.push_back(base + i);
     }
-    flush(current_tex);
+    flush(current_tex, current_blend);
+    SDL_SetRenderDrawBlendMode(r_, SDL_BLENDMODE_BLEND);
     SDL_RenderSetClipRect(r_, nullptr);
 }
 

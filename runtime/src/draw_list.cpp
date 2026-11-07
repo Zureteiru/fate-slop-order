@@ -1,5 +1,7 @@
 #include "vnr/rt/draw_list.h"
 
+#include <cmath>
+
 namespace vnr::rt {
 
 void DrawList::rect(const Rect& d, Color c) {
@@ -23,6 +25,15 @@ void DrawList::image(TextureId tex, const Rect& src, const Rect& d, Color c) {
     q.pos[3] = {d.x, d.y + d.h};
     q.color = c;
     quads.push_back(q);
+}
+
+void rotate(Quad& q, Vec2 origin, float degrees) {
+    if (degrees == 0) return;
+    const float a = degrees * 3.14159265f / 180.f, c = std::cos(a), s = std::sin(a);
+    for (Vec2& p : q.pos) {
+        const float x = p.x - origin.x, y = p.y - origin.y;
+        p = {origin.x + x * c - y * s, origin.y + x * s + y * c};
+    }
 }
 
 TextureId TextureStore::create(Image image, bool keep_pixels) {
