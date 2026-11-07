@@ -251,6 +251,7 @@ TextLayoutResult draw_text(GlyphAtlas& atlas, const RichText& text, std::size_t 
                         out.image(atlas.texture(), g.src, {dst.x + st.shadow_offset.x, dst.y + st.shadow_offset.y, dst.w, dst.h},
                                   {st.shadow.r, st.shadow.g, st.shadow.b, st.shadow.a * it.color.a});
                     out.image(atlas.texture(), g.src, dst, it.color);
+                    out.quads.back().snap = st.snap;
                 }
                 if (!it.ruby.empty()) {  // reading centred over the base, 0.38 of the size
                     float base_w = 0;

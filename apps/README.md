@@ -89,23 +89,33 @@ vnreader.exe --no-audio   # no sound device (the mixer still runs in real time, 
 
 ## Dictionary
 
-Word lookups use the vendored vnpop dictionary (`third_party/switch-vnpop`, the same code as Safir v0.1),
+Word lookups use the vendored vnpop dictionary (`third_party/switch-vnpop`, Safir v0.1 plus a local patch),
 wrapped by `runtime/src/lookup.cpp`. The packed dictionary is `<user folder>/dict.bin`, never committed:
 
 ```bash
-tools/install_dict.sh ../safir/dist/dict.bin        # Safir's JMdict pack (sha256 checked)
-tools/install_dict.sh jmdict_english.zip            # or pack Yomitan zips with dict_packer.py
+tools/install_dict.sh ../safir/.cache/JMdict_english.zip ../jiten_freq_global.zip   # JMdict ranked by Jiten
+tools/install_dict.sh ../safir/dist/dict.bin        # or Safir's pack as it is (JMdict scores only)
 ```
+
+With a frequency list (Jiten), entries that tie on matched length and inflection steps are ordered by its
+rank, as in Hoshi Reader: 行った shows 行く (rank 50) before 行う (674). Both stay, since 行って is also
+the te-form of 行う (おこなって).
 
 It is read into memory on the first lookup (25 MB for JMdict). Without it, a lookup shows "No dictionary".
 - **Choosing a word:** `draw_text` records a box per drawn character (`TextStyleBox::boxes`); the App keeps
   the dialogue's and the open log's boxes from the last frame. Shift + mouse (PC) looks up the word under
   the pointer, as Yomitan does; Y (Switch / gamepad) starts on the first dictionary word, and ← → hop between
   words (vnpop's tokenizer). Lookups run from that character over at most 128 characters (vnpop's line).
-- **Popup:** drawn in Hoshi Reader's style (its `popup.css`): a light rounded panel, the reading over a
-  large headword, grey pills for the inflections undone, a blue Freq chip (JMdict rank), then a rounded
-  "▼ JMdict" box with part-of-speech pills and numbered senses, glosses split by " | ". The looked-up
-  characters get a grey box. The popup sits above the dialogue (above or below a log entry) and pages
+- **Deconjugation:** Yomitan's transform table, walked depth-first exactly as hoshidicts (Hoshi Reader's
+  backend) does: `third_party/switch-vnpop/tools/yomitan_transforms.json` → `gen_deinflect_rules.py` →
+  `vnpop_deinflect_rules.h`. `tools/dict_parity/run.sh deinflect` (Docker `gcc:14`) compares it with
+  hoshidicts on ~200k inputs from the JP script and generated endings: 0 differences. Run it after any
+  change to the deinflector. What this means for Safir: `docs/safir_dictionary_fixes.md`.
+- **Popup:** Hoshi Reader's layout (its `popup.css`) in a dark sepia theme: the reading over a large
+  headword, a pill per inflection undone with Yomitan's names (-て, -しまう, -ます, -た), an amber Freq chip
+  (the frequency rank, hidden for words the list lacks), then a rounded "▼ JMdict" box with part-of-speech pills and numbered senses, glosses split
+  by " | ". Its text uses the OS font (a separate 36 px atlas made on first use) snapped to whole pixels
+  (`TextStyleBox::snap`), not the game font. The looked-up characters get a sepia box. The popup sits above the dialogue (above or below a log entry) and pages
   by entry (↑ ↓), as the DrawList cannot clip text; "1 / 7" counts the entries. The story waits while it
   is open. Pitch accent is not shown: vnpop's entry list does not carry it.
 - **Smoke:** `vnreader.exe --region JP --scripts 0100000010,0100000011 --smoke 0 --until "行ってしまいました" --lookup "行って" --screenshot shot.bmp`.

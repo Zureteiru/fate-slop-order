@@ -56,7 +56,7 @@ static void test_chained_deinflection(void) {
         { "行かなきゃ", "行く", VNPOP_POS_VERB_GODAN },          /* -ya + -ba + negative */
         { "書いておいた", "書く", VNPOP_POS_VERB_GODAN },        /* -te + oku + past */
         { "食べさせられなかった", "食べる", VNPOP_POS_VERB_ICHIDAN },
-        { "勉強しなければ", "勉強", VNPOP_POS_VERB_SURU },       /* suru noun */
+        { "勉強しなければ", "勉強する", VNPOP_POS_VERB_SURU },   /* Yomitan stops at the suru verb */
         { "待っていた", "待つ", VNPOP_POS_VERB_GODAN },
         { "美しくなかった", "美しい", VNPOP_POS_ADJ_I },
         { "飲みたくなかった", "飲む", VNPOP_POS_VERB_GODAN },
@@ -77,7 +77,7 @@ static void test_chained_deinflection(void) {
     }
     std::string t;
     TEST_ASSERT(deinflects_to("見ていた", "見る", VNPOP_POS_VERB_ICHIDAN, &t));
-    TEST_ASSERT(t == "-te+-te iru+past"); /* base first */
+    TEST_ASSERT(t == "-て+-いる+-た"); /* Yomitan's names, base first */
 
     /* No stem, no word: "た" alone is not a verb, "ない" is not "る". */
     static VnpopDeinflectCandidate c[VNPOP_MAX_DEINFLECT_CANDIDATES];

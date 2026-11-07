@@ -42,7 +42,7 @@ static void test_deinflector_rules(void) {
     for (size_t i = 0; i < count; ++i) {
         if (strcmp(candidates[i].term, "美しい") == 0 && (candidates[i].pos_mask & VNPOP_POS_ADJ_I)) {
             found_utsukushii = true;
-            TEST_ASSERT(strcmp(candidates[i].rule_trace, "past") == 0);
+            TEST_ASSERT(strcmp(candidates[i].rule_trace, "-た") == 0); /* Yomitan's name */
             break;
         }
     }

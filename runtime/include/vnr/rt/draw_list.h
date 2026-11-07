@@ -44,6 +44,8 @@ struct Quad {
     // quad whose last corner repeats the third.
     bool has_uv = false;
     Vec2 uv[4];
+    // Moved to whole screen pixels by the renderer (small UI text: every glyph then filters the same).
+    bool snap = false;
 };
 
 struct DrawList {

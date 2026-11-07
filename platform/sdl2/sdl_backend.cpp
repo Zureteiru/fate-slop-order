@@ -1,6 +1,7 @@
 #include "sdl_backend.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 
 namespace vnr::sdl {
@@ -113,9 +114,15 @@ void Renderer::draw(const rt::DrawList& list) {
         if (q.has_uv)
             for (int k = 0; k < 4; ++k) uv[k] = {q.uv[k].x / size.x, q.uv[k].y / size.y};
         const int base = static_cast<int>(verts_.size());
+        float sx = 0, sy = 0;  // Quad::snap: shift the whole quad so its top-left is on a pixel
+        if (q.snap) {
+            const float x = offset_x_ + q.pos[0].x * scale_, y = offset_y_ + q.pos[0].y * scale_;
+            sx = std::round(x) - x;
+            sy = std::round(y) - y;
+        }
         for (int k = 0; k < 4; ++k) {
             SDL_Vertex v;
-            v.position = {offset_x_ + q.pos[k].x * scale_, offset_y_ + q.pos[k].y * scale_};
+            v.position = {offset_x_ + q.pos[k].x * scale_ + sx, offset_y_ + q.pos[k].y * scale_ + sy};
             v.color = to_sdl(rt::corner_color(q, k));
             v.tex_coord = uv[k];
             verts_.push_back(v);

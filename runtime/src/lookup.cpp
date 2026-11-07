@@ -80,7 +80,9 @@ std::vector<DictEntry> Dictionary::lookup(const std::vector<char32_t>& text, std
         e.rule = mt.rule;
         e.matched = mt.matched_chars;
         e.pos_mask = mt.pos_mask;
-        e.freq_rank = mt.freq_rank < 32768 ? mt.freq_rank : 0;  // reading-only keys are pushed past 32768
+        // 30000+: a word the frequency list does not have (dict_packer.py FREQ_RANK_LIMIT), or a
+        // reading-only key (+32768): no rank to show
+        e.freq_rank = mt.freq_rank < 30000 ? mt.freq_rank : 0;
         out.push_back(std::move(e));
     }
     return out;
@@ -118,9 +120,10 @@ int box_at(const std::vector<GlyphBox>& boxes, Vec2 p) {
     return -1;
 }
 
-// ---- LookupPopup: drawn in Hoshi Reader's style (its popup.css): a light rounded panel, the reading
-// over a large headword, grey inflection pills, a blue frequency chip, then a rounded box per
-// dictionary with numbered senses whose glosses are split by " | ".
+// ---- LookupPopup: Hoshi Reader's layout (its popup.css) in a dark sepia theme: a rounded panel, the
+// reading over a large headword, inflection pills, a frequency chip, then a rounded box per
+// dictionary with numbered senses whose glosses are split by " | ". Drawn with the OS UI font
+// (the App's popup atlas), not the game font.
 
 namespace {
 
@@ -132,17 +135,20 @@ constexpr float kPillPx = 15, kPillPadX = 6, kPillPadY = 4, kPillGap = 4;
 constexpr float kGlossPx = 20, kGlossLine = 28;
 constexpr float kNumIndent = 30;      // "1." column
 constexpr float kGroupPad = 10;
-constexpr Color kPanel{0.975f, 0.975f, 0.975f, 1};
-constexpr Color kPanelEdge{0.7f, 0.7f, 0.7f, 1};       // Color.primary at 20% over the panel
-constexpr Color kShadowC{0, 0, 0, 0.18f};
-constexpr Color kText{0.1f, 0.1f, 0.1f, 1};
-constexpr Color kSubtle{0.45f, 0.45f, 0.47f, 1};
-constexpr Color kPill{0.84f, 0.84f, 0.84f, 1};          // rgba(128,128,128,0.2) on the panel
-constexpr Color kFreq{0.467f, 0.667f, 0.922f, 1};       // #77aaeb
-constexpr Color kGroupFill{1, 1, 1, 1};
-constexpr Color kGroupEdge{0.86f, 0.86f, 0.86f, 1};     // rgba(0,0,0,0.14) on the panel
-constexpr Color kRule{0.8f, 0.8f, 0.8f, 1};             // the hr between entries
-constexpr Color kWordMark{0.6f, 0.6f, 0.6f, 0.45f};     // the grey box over the looked-up word
+// Dark sepia: warm browns with parchment-coloured ink (all opaque, so edges show only at the rim).
+constexpr Color kPanel{0.141f, 0.106f, 0.078f, 1};      // #241b14
+constexpr Color kPanelEdge{0.42f, 0.34f, 0.25f, 1};     // #6b5640
+constexpr Color kShadowC{0, 0, 0, 0.45f};
+constexpr Color kText{0.937f, 0.89f, 0.80f, 1};         // #efe3cc
+constexpr Color kReading{0.79f, 0.72f, 0.60f, 1};       // #c9b79a
+constexpr Color kSubtle{0.63f, 0.55f, 0.44f, 1};        // #a08c70
+constexpr Color kPill{0.24f, 0.19f, 0.14f, 1};          // #3d3024
+constexpr Color kPillText{0.90f, 0.84f, 0.73f, 1};      // #e6d6bb
+constexpr Color kFreq{0.72f, 0.54f, 0.29f, 1};          // #b8894a
+constexpr Color kGroupFill{0.18f, 0.137f, 0.10f, 1};    // #2e231a
+constexpr Color kGroupEdge{0.30f, 0.24f, 0.18f, 1};     // #4d3d2d
+constexpr Color kRule{0.30f, 0.24f, 0.18f, 1};          // the hr between entries
+constexpr Color kWordMark{0.72f, 0.54f, 0.29f, 0.38f};  // the sepia box over the looked-up word
 
 // A run of plain text (no script tags: glossaries contain brackets the script parser would eat).
 RichText plain(const std::string& s) {
@@ -163,8 +169,12 @@ TextStyleBox style(float x, float y, float w, float px, float line, Color ink, i
     tb.max_lines = max_lines;
     tb.first_line = 0;
     tb.ink = ink;
+    tb.snap = true;
     return tb;
 }
+
+// Top of a text box whose glyphs sit centred in a band [top, top + h) (cap height ~0.72 of the size).
+float centred(float top, float h, float px) { return top + h / 2 + 0.36f * px - px; }
 
 // A filled rectangle with rounded corners, from one rect per corner row (the DrawList has no paths).
 void round_rect(DrawList& out, const Rect& r, float radius, Color c) {
@@ -248,7 +258,7 @@ float entry(GlyphAtlas& atlas, const DictEntry& e, const std::string& dict_name,
         RichText rd = plain(e.reading);
         const float rw = text_width(atlas, rd, kRubyPx);
         const float rx = x + std::max(0.f, (hw - rw) / 2);
-        if (out) draw_text(atlas, rd, rd.glyph_count, style(rx, cy, rw + 4, kRubyPx, kRubyPx * 1.3f, kText), *out);
+        if (out) draw_text(atlas, rd, rd.glyph_count, style(rx, cy, rw + 4, kRubyPx, kRubyPx * 1.3f, kReading), *out);
     }
     cy += kRubyPx * 1.3f;
     if (out) draw_text(atlas, head, head.glyph_count, style(x, cy, w, kHeadPx, kHeadPx * 1.25f, kText), *out);
@@ -274,7 +284,7 @@ float entry(GlyphAtlas& atlas, const DictEntry& e, const std::string& dict_name,
         const float at = place(tw + 2 * kPillPadX);
         if (out) {
             round_rect(*out, {at, cy, tw + 2 * kPillPadX, pill_h}, 4, kPill);
-            draw_text(atlas, t, t.glyph_count, style(at + kPillPadX, cy + kPillPadY, tw + 4, kPillPx, pill_h, kText), *out);
+            draw_text(atlas, t, t.glyph_count, style(at + kPillPadX, centred(cy, pill_h, kPillPx), tw + 4, kPillPx, pill_h, kPillText), *out);
         }
     }
     if (e.freq_rank > 0) {
@@ -286,8 +296,8 @@ float entry(GlyphAtlas& atlas, const DictEntry& e, const std::string& dict_name,
             framed(*out, {at, cy, lw + vw, pill_h}, 4, kPanel, kFreq);
             round_rect(*out, {at, cy, lw + 2, pill_h}, 4, kFreq);
             out->rect({at + lw - 2, cy, 2, pill_h}, kFreq);  // square join with the value half
-            draw_text(atlas, label, label.glyph_count, style(at + kPillPadX, cy + kPillPadY, lw, kPillPx, pill_h, {1, 1, 1, 1}), *out);
-            draw_text(atlas, value, value.glyph_count, style(at + lw + kPillPadX, cy + kPillPadY, vw, kPillPx, pill_h, kText), *out);
+            draw_text(atlas, label, label.glyph_count, style(at + kPillPadX, centred(cy, pill_h, kPillPx), lw, kPillPx, pill_h, kPanel), *out);
+            draw_text(atlas, value, value.glyph_count, style(at + lw + kPillPadX, centred(cy, pill_h, kPillPx), vw, kPillPx, pill_h, kText), *out);
         }
     }
     if (any) cy += pill_h + 8;
@@ -320,7 +330,7 @@ float entry(GlyphAtlas& atlas, const DictEntry& e, const std::string& dict_name,
             }
             if (io) {
                 round_rect(*io, {tx, iy, tw, pill_h}, 4, kPill);
-                draw_text(atlas, t, t.glyph_count, style(tx + kPillPadX, iy + kPillPadY, tw, kPillPx, pill_h, kText), *io);
+                draw_text(atlas, t, t.glyph_count, style(tx + kPillPadX, centred(iy, pill_h, kPillPx), tw, kPillPx, pill_h, kPillText), *io);
             }
             tx += tw + kPillGap;
         }
@@ -347,7 +357,7 @@ float entry(GlyphAtlas& atlas, const DictEntry& e, const std::string& dict_name,
     iy += kGroupPad - 6;
     if (out) {
         const float gh = std::min(iy, bottom) - gy;
-        out->rect({gx + 2, gy + gh, gw - 4, 1}, {0, 0, 0, 0.1f});  // 1px drop shadow
+        out->rect({gx + 2, gy + gh, gw - 4, 1}, {0, 0, 0, 0.3f});  // 1px drop shadow
         framed(*out, {gx, gy, gw, gh}, 8, kGroupFill, kGroupEdge);
         out->quads.insert(out->quads.end(), inner.quads.begin(), inner.quads.end());
     }

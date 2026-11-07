@@ -794,7 +794,12 @@ void App::render() {
         scene_.text_boxes = nullptr;
         log_targets_.clear();
         log_.draw(player_->backlog(), atlas_, draw_, log_.is_open() ? &log_targets_ : nullptr);
-        lookup_.draw(atlas_, draw_);
+        if (lookup_.is_open() && !popup_atlas_) {
+            // The OS font reads better than the game font for glosses; 36 px suits the 15-38 unit sizes.
+            popup_atlas_ = std::make_unique<GlyphAtlas>(textures_, platform_.font, platform_.font_index, 36.f);
+            if (!popup_atlas_->ok()) popup_atlas_.reset();
+        }
+        lookup_.draw(popup_atlas_ ? *popup_atlas_ : atlas_, draw_);
         save_screen_.draw(saves_, cache_, atlas_, draw_);
         if (toast_left_ > 0 && !toast_.empty()) {
             const RichText msg = parse_rich_text(toast_, {});

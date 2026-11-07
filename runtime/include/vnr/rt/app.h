@@ -169,6 +169,7 @@ private:
     Dictionary dict_;
     bool dict_tried_ = false;
     LookupPopup lookup_;
+    std::unique_ptr<GlyphAtlas> popup_atlas_;  // the OS UI font, made when the popup first opens
     std::vector<GlyphBox> story_boxes_;      // the dialogue's characters as last drawn
     std::vector<LookupTarget> log_targets_;  // the log's entries as last drawn (while it is open)
     bool swallow_pointer_ = false;           // the press that closed the popup: drop its move / release

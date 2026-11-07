@@ -13,7 +13,9 @@ Rules:
 - SDL code lives only in platform/sdl2/. OS-specific code (Switch,
   Windows, macOS, Android) lives only in apps/*/. Anything that differs
   per OS goes through runtime/include/vnr/rt/platform.h.
-- Never edit third_party/; changes go upstream in switch-vnpop.
+- Never edit third_party/; changes go upstream in switch-vnpop (now Safir). The one exception is the
+  Yomitan deconjugation patch in third_party/switch-vnpop (see its VENDORED.md); docs/safir_dictionary_fixes.md
+  says how to port it to Safir.
 - Never commit Fate Café source, its assets or game art (UI sheets, fonts, sounds); scratch/ is for downloads.
   Assets taken from Fate Café or the game are installed into the user folder by a
   tools/install_*.sh script with a SHA-256 check (see apps/README.md).

@@ -63,6 +63,7 @@ struct TextStyleBox {
     Color shadow{0, 0, 0, 0};  // drop shadow under each glyph; alpha 0 = none
     Vec2 shadow_offset{2, 2};
     std::vector<GlyphBox>* boxes = nullptr;  // when set, draw_text appends a box per drawn character
+    bool snap = false;  // glyphs land on whole screen pixels (Quad::snap): crisper small text
 };
 
 struct TextLayoutResult {
