@@ -12,6 +12,7 @@
 #include "vnr/rt/layer_mask.h"
 #include "vnr/rt/text.h"
 #include "vnr/rt/ui_skin.h"
+#include "vnr/rt/wipe_mask.h"
 
 namespace vnr::rt {
 
@@ -30,6 +31,7 @@ struct SceneAssets {
     double clock = 0;  // seconds since start, for UI animation (the "next" marker)
     bool auto_mode = false;  // AUTO button lit
     std::map<std::string, LayerMask> masks;  // subCameraFilter mask images, by name (decoded by the App)
+    WipeLayer wipe, wipe_filter;             // this frame's wipe masks (WipeMasks, owned by the App)
 };
 
 // Layout of the story UI (stage units), shared with input hit-testing. Every number is measured

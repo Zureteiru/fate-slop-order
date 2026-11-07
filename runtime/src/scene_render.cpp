@@ -265,10 +265,10 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
 
     // screen layer (no camera)
     const Rect full{0, 0, kW, kH};
+    draw_wipe_layer(a.wipe_filter, out);
     const float fade = st.fade.opacity.value();
     if (fade > 0) out.rect(full, to_color(st.fade.color, fade));
-    const float cover = st.wipe.cover.value();  // wipe masks come later: approximate with an even cover
-    if (cover > 0) out.rect(full, to_color(st.wipe.color, cover));
+    draw_wipe_layer(a.wipe, out);
     if (st.flash.active) {
         const Rgba fc = st.flash.color();
         if (fc.a > 0) out.rect(full, to_color(fc));

@@ -3,6 +3,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include "vnr/rt/catalogue.h"
 #include "vnr/rt/draw_list.h"
 #include "vnr/rt/focus_nav.h"
+#include "vnr/rt/wipe_mask.h"
 #include "vnr/rt/platform.h"
 #include "vnr/rt/scene_render.h"
 #include "vnr/rt/text.h"
@@ -98,6 +100,7 @@ private:
     Platform& platform_;
     AppConfig config_;
     TextureStore textures_;
+    WipeMasks wipes_;
     AssetCache cache_;
     AudioDirector audio_;
     SharedBytes choice_sound_;  // null when not installed
@@ -131,6 +134,7 @@ private:
     void leave_part(bool finished);
     void load_scripts();
     void request_assets();
+    void load_wipes(const std::set<std::string>& patterns);
     void finish_assets();
     void start_script(std::size_t index);
     void handle(const InputEvent& e);

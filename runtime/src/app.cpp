@@ -118,9 +118,26 @@ void App::load_scripts() {
     phase_ = Phase::LoadingAssets;
 }
 
+// Wipe textures are local user files (tools/install_wipes.sh); a missing one uses a built-in field.
+void App::load_wipes(const std::set<std::string>& patterns) {
+    if (!platform_.user) return;
+    for (const std::string& pat : patterns) {
+        const std::string file = wipe_texture_file(pat);
+        if (file.empty() || wipes_.installed(pat)) continue;
+        std::vector<std::uint8_t> bytes;
+        Image img;
+        if (!platform_.user->read(file, bytes)) continue;
+        if (!decode_image(bytes, img)) {
+            platform_.log.write(file + " could not be decoded; using the built-in wipe");
+            continue;
+        }
+        wipes_.install(pat, wipe_field_from_image(img));
+    }
+}
+
 void App::request_assets() {
     std::set<int> figures;
-    std::set<std::string> backgrounds, images, masks;
+    std::set<std::string> backgrounds, images, masks, wipes;
     const bool female = config_.settings.text.gender == Gender::Female;
     for (const Program& p : programs_) {
         for (const Instr& in : p.code) {
@@ -136,8 +153,11 @@ void App::request_assets() {
             else if (n == "sceneSet") backgrounds.insert(c.arg(1));
             else if (n == "imageSet" || n == "verticalImageSet" || n == "horizontalImageSet" || n == "imageChange") images.insert(c.arg(1));
             else if (n == "subCameraFilter" && c.arg(1) == "maskEdge" && !c.arg(2).empty()) masks.insert(c.arg(2));
+            else if (n == "wipein" || n == "wipeout") wipes.insert(c.has(0) ? c.arg(0) : "leftToRight");
+            else if (n == "wipeFilter") wipes.insert(c.has(0) ? c.arg(0) : "cinema");
         }
     }
+    load_wipes(wipes);
     figures.erase(0);
     figure_ids_.assign(figures.begin(), figures.end());
     for (int f : figure_ids_) {
@@ -419,6 +439,9 @@ void App::render() {
     }
     if (phase_ == Phase::Playing && player_) {
         scene_.auto_mode = player_->settings().auto_mode;
+        wipes_.update(player_->stage(), textures_);
+        scene_.wipe = wipes_.wipe;
+        scene_.wipe_filter = wipes_.filter;
         render_scene(*player_, scene_, atlas_, ui_, draw_);
         log_.draw(player_->backlog(), atlas_, draw_);
         return;

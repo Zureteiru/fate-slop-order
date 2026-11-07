@@ -9,6 +9,7 @@
 #include "vnr/rt/json.h"
 #include "vnr/rt/layer_mask.h"
 #include "vnr/rt/ui_skin.h"
+#include "vnr/rt/wipe_mask.h"
 
 #ifndef VNR_FIXTURE_DIR
 #error "VNR_FIXTURE_DIR must point at .cache/scripts"
@@ -657,4 +658,77 @@ TEST(clip_quad_interpolates_corner_colours) {
         CHECK(p.blend == Blend::Add);
         for (int k = 0; k < 3; ++k) CHECK_NEAR(p.colors[k].a, p.pos[k].y / 100, 1e-3);
     }
+}
+
+TEST(wipe_threshold_matches_fate_cafe) {
+    CHECK_NEAR(wipe_alpha(0.5f, 0, 1), 0, 1e-6);   // nothing covered at the start
+    CHECK_NEAR(wipe_alpha(1.0f, 1, 1), 1, 1e-6);   // everything at the end
+    CHECK_NEAR(wipe_alpha(0.5f, 0.5f, 1), 0.5f, 1e-6);  // r = p(1+g) = 1, (r - v) / g
+    CHECK(wipe_alpha(0.2f, 0.3f, 0) == 1);          // hard edge without gradation
+    CHECK(wipe_alpha(0.4f, 0.3f, 0) == 0);
+    CHECK(wipe_key(" RectangleLeftToRight") == "rectanglestriplefttoright");
+    CHECK(wipe_texture_file("OPENEYE") == "wipes/openEye.png");
+    CHECK(wipe_texture_file("cutVer").empty());
+}
+
+TEST(wipe_builtin_fields_follow_the_texture_shapes) {
+    auto at = [](const WipeField& f, float u, float y) {
+        return f.v[static_cast<std::size_t>(y * (kWipeFieldSize - 1)) * kWipeFieldSize + static_cast<std::size_t>(u * (kWipeFieldSize - 1))];
+    };
+    const WipeField l2r = procedural_wipe_field("leftToRight");
+    REQUIRE(l2r.ok());
+    CHECK(at(l2r, 0.05f, 0.5f) < at(l2r, 0.95f, 0.5f));
+    const WipeField in = procedural_wipe_field("circleIn"), out = procedural_wipe_field("circleOut");
+    CHECK(at(in, 0.5f, 0.5f) > at(in, 0.05f, 0.05f));    // closes from the corners
+    CHECK(at(out, 0.5f, 0.5f) < at(out, 0.05f, 0.05f));  // opens from the middle
+    const WipeField eye = procedural_wipe_field("openEye");
+    CHECK(at(eye, 0.5f, 0.05f) < 0.01f);  // lids first
+    CHECK(at(eye, 0.5f, 0.5f) > 0.9f);
+    const WipeField roll = procedural_wipe_field("rollLeft");  // counter-clockwise from the top
+    CHECK(at(roll, 0.05f, 0.5f) < at(roll, 0.5f, 0.95f));
+    CHECK(at(roll, 0.5f, 0.95f) < at(roll, 0.95f, 0.5f));
+    CHECK(procedural_wipe_field("noise").ok());
+    CHECK(!procedural_wipe_field("uzumaki").ok());  // no built-in shape: even fade
+}
+
+TEST(wipe_masks_draw_a_texture_mask_or_an_even_fade) {
+    TextureStore tex;
+    WipeMasks wm;
+    Stage st;
+    st.wipe.pattern = "leftToRight";
+    st.wipe.softness = 0;
+    st.wipe.cover.snap(0.5f);
+    wm.update(st, tex);
+    REQUIRE(wm.wipe.texture != 0);
+    const Image* img = tex.pixels(wm.wipe.texture);
+    REQUIRE(img && img->width == kWipeFieldSize);
+    auto alpha = [&](int x) { return img->rgba[(static_cast<std::size_t>(128) * kWipeFieldSize + x) * 4 + 3]; };
+    CHECK(alpha(10) == 255);  // left half covered
+    CHECK(alpha(245) == 0);
+    DrawList dl;
+    draw_wipe_layer(wm.wipe, dl);
+    REQUIRE(dl.quads.size() == 4);  // the view, plus edge pixels repeated out to the stage edges
+    CHECK(near(dl.quads[0].pos[0], {kViewSafeLeft, kViewTop}));
+    // an installed texture replaces the built-in field: a flipped gradient covers the right side
+    Image flip;
+    flip.width = flip.height = 4;
+    for (int y = 0; y < 4; ++y)
+        for (int x = 0; x < 4; ++x)
+            for (int c = 0; c < 4; ++c) flip.rgba.push_back(c == 3 ? 255 : static_cast<std::uint8_t>(255 - x * 85));
+    wm.install("LEFTTORIGHT", wipe_field_from_image(flip));
+    wm.update(st, tex);
+    img = tex.pixels(wm.wipe.texture);
+    CHECK(alpha(10) == 0);
+    CHECK(alpha(245) == 255);
+    // unknown shape: even cover; fully covered: even cover too; cinema filter without texture: bars
+    st.wipe.pattern = "uzumaki";
+    wm.update(st, tex);
+    CHECK(wm.wipe.texture == 0);
+    CHECK_NEAR(wm.wipe.even, 0.5f, 1e-6);
+    st.wipe_filter = {true, "cinema", 0.3f, 1};
+    wm.update(st, tex);
+    CHECK(wm.filter.bars);
+    dl.clear_all();
+    draw_wipe_layer(wm.filter, dl);
+    CHECK(dl.quads.size() == 2);
 }
