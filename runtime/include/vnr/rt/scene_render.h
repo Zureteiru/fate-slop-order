@@ -41,17 +41,19 @@ struct SceneAssets {
 
 // Layout of the story UI (stage units), shared with input hit-testing. Every number is measured
 // from 1080p NA gameplay video (game view = stage x 160-1184, y 0-576, see kView* in draw_list.h).
-// The game draws the sheet pieces at native width but squashed vertically (151 -> 139, 51 -> 45,
+// The game draws the sheet pieces at native width but squashed vertically (151 -> 139,
 // 82 -> 71); the name tab is drawn over the box's top-left corner.
 struct UiLayout {
     Rect panel{179.5f, 425, 984, 139};          // ends 12 above the bottom of the view
     // Text wraps at the game's width: from the text's left edge to just short of the LOG / AUTO
     // buttons (video: x 1093). Scripts break some lines themselves ([r]/[sr]); the rest the game
     // wraps, so this width, not per-line fixes, decides how every chapter's text fits.
-    Rect text{227.5f, 463.6f, 866, 100};      // left edge from the game frame (4.5 left of the old 232)           // first baseline = text.y + text_px (492.3)
-    Rect name_plate{165.5f, 393.4f, 283, 45};   // width is the minimum; longer names stretch the tab
-    float name_text_x = 24.5f, name_baseline = 36.2f;  // inside the tab
-    float text_px = 28.7f, line_height = 48, name_px = 29;  // FOT-Skip Std B em sizes (text widths match the video)
+    Rect text{227.5f, 461.4f, 866, 100};      // left edge from the game frame (4.5 left of the old 232)           // first baseline = text.y + text_px (492.3)
+    Rect name_plate{155.5f, 386.4f, 283, 51};   // native height; width is the minimum, longer names stretch the tab
+    float name_text_x = 30.5f, name_baseline = 40.1f;  // inside the tab
+    float text_px = 28.7f, line_height = 48.5f, name_px = 30.5f;  // FOT-Skip Std B em sizes (text widths match the video)
+    // Re-measured against a game frame (2026-11-07): name tab 10 further left, name text ~5% wider,
+    // line pitch ~1% larger and the dialogue ~2 higher; box and dialogue font size unchanged.
     int visible_lines = 2;
     float choice_width = 777.5f, choice_height = 71, choice_gap = 30.4f, choice_px = 28.5f;
     float choice_baseline = 49.2f;              // from the frame's top
