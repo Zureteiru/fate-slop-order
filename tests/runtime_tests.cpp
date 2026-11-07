@@ -1,4 +1,6 @@
 // Runtime: JSON, images, asset cache, text layout, and golden draw lists from the App.
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 
 #include "check.h"
@@ -9,6 +11,7 @@
 #include "vnr/rt/json.h"
 #include "vnr/rt/layer_mask.h"
 #include "vnr/rt/ui_skin.h"
+#include "vnr/rt/special_mask.h"
 #include "vnr/rt/wipe_mask.h"
 
 #ifndef VNR_FIXTURE_DIR
@@ -775,4 +778,65 @@ TEST(picture_frame_covers_the_stage_and_fades_in) {
     dl.clear_all();
     draw_picture_frame(st, a, dl);
     CHECK(dl.quads.empty());
+}
+
+TEST(special_mask_erases_top_down_and_reveals_bottom_up) {
+    Quad q;
+    q.texture = 7;
+    q.blend = Blend::Add;
+    q.pos[0] = {0, 0};
+    q.pos[1] = {100, 0};
+    q.pos[2] = {100, 100};
+    q.pos[3] = {0, 100};
+    q.src = {0, 0, 100, 100};
+    const Rect box{0, 0, 100, 100};
+    SpecialErase erase;
+    CHECK(apply_special_mask({q}, box, erase, 0).size() == 1);  // untouched at the start
+    CHECK(apply_special_mask({q}, box, erase, 1).empty());       // gone at the end
+    // mid-way: clear above the band, a gradient through it, opaque below
+    const float t = 0.5f, start = 1 - 1.2039215f * (1 - t);
+    float lowest_clear = 1e9f;
+    for (const Quad& p : apply_special_mask({q}, box, erase, t)) {
+        CHECK(p.texture == 7 && p.blend == Blend::Add && p.has_colors);
+        for (int k = 0; k < 3; ++k) {
+            CHECK(p.pos[k].y >= start * 100 - 0.01f);
+            CHECK_NEAR(p.colors[k].a, std::clamp((p.pos[k].y / 100 - start) / 0.2f, 0.f, 1.f), 1e-3);
+            lowest_clear = std::min(lowest_clear, p.pos[k].y);
+        }
+    }
+    CHECK_NEAR(lowest_clear, start * 100, 0.01f);
+    // reversed: the clear part is at the bottom instead
+    SpecialErase rev;
+    rev.reverse = true;
+    for (const Quad& p : apply_special_mask({q}, box, rev, t))
+        for (int k = 0; k < 3; ++k) CHECK(p.pos[k].y <= (1 - start) * 100 + 0.01f);
+    // appearance at the start shows nothing, at the end everything
+    SpecialErase in;
+    in.incoming = true;
+    for (const Quad& p : apply_special_mask({q}, box, in, 0))  // only the band's start at the feet (Fate Café)
+        for (int k = 0; k < 3; ++k) CHECK(p.pos[k].y >= 80 - 0.01f);
+    CHECK(apply_special_mask({q}, box, in, 1).size() == 1);
+}
+
+TEST(special_mask_radial_keeps_the_centre_and_clears_the_corners) {
+    Quad q;
+    q.pos[0] = {0, 0};
+    q.pos[1] = {100, 0};
+    q.pos[2] = {100, 100};
+    q.pos[3] = {0, 100};
+    SpecialErase wipe;
+    wipe.radial = true;
+    const std::vector<Quad> parts = apply_special_mask({q}, {0, 0, 100, 100}, wipe, 0.6f);
+    REQUIRE(!parts.empty());
+    bool opaque_disc = false;  // the inner disc keeps full alpha
+    for (const Quad& p : parts) {
+        bool solid = true;
+        for (int k = 0; k < 3; ++k) {
+            CHECK(std::hypot(p.pos[k].x - 50, p.pos[k].y - 50) < 60);  // n = 0.48: the corners (70.7 away) are gone
+            solid = solid && p.colors[k].a > 0.99f;
+        }
+        opaque_disc = opaque_disc || solid;
+    }
+    CHECK(opaque_disc);
+    CHECK(apply_special_mask({q}, {0, 0, 100, 100}, wipe, 0).size() == 1);
 }

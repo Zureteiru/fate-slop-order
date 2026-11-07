@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "vnr/rt/special_mask.h"
+
 namespace vnr::rt {
 
 namespace {
@@ -139,9 +141,10 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
             offset.y += e->attack_offset.y * k;
         }
         const Color tint = element_tint(*e, opacity);
-        // Surfaces draw into a scratch list in surface coordinates first.
+        // Surfaces draw into a scratch list in surface coordinates first; charaSpecialEffect masks the
+        // finished sprite over its body's box (the first quad).
         DrawList local;
-        DrawList& target = surface ? local : out;
+        DrawList& target = surface || e->special ? local : out;
         const StageTransform& tt = surface ? StageTransform{} : t;
         if (e->kind == ElementKind::Chara) {
             FaceAnchor anchor;
@@ -158,20 +161,35 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
             push_quad(target, tex->id, {0, 0, static_cast<float>(tex->width), static_cast<float>(tex->height)},
                       {(kW - w) / 2 + offset.x, (kH - h) / 2 - offset.y, w, h}, tint, tt);
         }
-        if (!surface) continue;
+        auto push = [&](std::vector<Quad>& quads, const Rect& box) {
+            if (e->special && !quads.empty()) quads = apply_special_mask(quads, box, *e->special, special_t(*e->special));
+            out.quads.insert(out.quads.end(), quads.begin(), quads.end());
+        };
+        if (!surface) {
+            if (e->special && !local.quads.empty()) push(local.quads, quad_bounds(local.quads.front()));
+            continue;
+        }
         const Vec2 move{lp.offset.x * kMaskOffsetScale, (mask && mask->full_width) ? -lp.offset.y * kMaskOffsetScale : 0.f};
         auto to_stage = [&](Vec2 p) {
             return t.apply({kW / 2 + (p.x - kW / 2) * lp.scale + move.x, kH / 2 + (p.y - kH / 2) * lp.scale + move.y});
         };
+        std::vector<Quad> staged;
         for (const Quad& q : local.quads) {
             std::vector<Quad> parts;
             if (mask) parts = clip_quad(q, mask->polygon);
             else parts.push_back(q);
             for (Quad& p : parts) {
                 for (Vec2& v : p.pos) v = to_stage(v);
-                out.quads.push_back(p);
+                staged.push_back(p);
             }
         }
+        Rect box;
+        if (e->special && !local.quads.empty()) {
+            Quad body = local.quads.front();
+            for (Vec2& v : body.pos) v = to_stage(v);
+            box = quad_bounds(body);
+        }
+        push(staged, box);
     }
     if (st.communication) {  // hologram figure: tinted, left of centre
         const float o = st.communication->opacity.value();
