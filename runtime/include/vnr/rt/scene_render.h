@@ -71,6 +71,13 @@ StoryButton story_button_at(const UiLayout& ui, Vec2 p, bool text_box_visible);
 
 std::vector<Rect> choice_rects(const ChoiceOp& choice, const UiLayout& ui, bool text_box_visible);
 
+// Redraws `quads` in horizontal bands: `period`-tall stripes whose last quarter is drawn at `dim` alpha
+// (the communication hologram's scanlines).
+void add_scanlines(const std::vector<Quad>& quads, DrawList& out, float period = 4, float dim = 0.4f);
+
+// cameraFilter gray and camera blur over the stage quads drawn from index `first` on.
+void apply_camera_filter(const Camera& cam, const SceneAssets& assets, std::size_t first, DrawList& out);
+
 // The pictureFrame overlay (part of render_scene).
 void draw_picture_frame(const Stage& st, const SceneAssets& assets, DrawList& out);
 

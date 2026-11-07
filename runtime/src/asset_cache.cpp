@@ -1,5 +1,7 @@
 #include "vnr/rt/asset_cache.h"
 
+#include <cmath>
+
 namespace vnr::rt {
 
 std::string AssetCache::cache_key(const std::string& url, const std::string& range) {
@@ -40,7 +42,13 @@ AssetState AssetCache::request_fresh_bytes(const std::string& url) { return requ
 void AssetCache::forget(const std::string& url, const std::string& range) {
     const auto it = entries_.find(cache_key(url, range));
     if (it == entries_.end() || it->second.state == AssetState::Loading) return;
-    if (it->second.texture && it->second.tex.id) textures_.release(it->second.tex.id);
+    if (it->second.texture && it->second.tex.id) {
+        textures_.release(it->second.tex.id);
+        if (const auto g = gray_.find(it->second.tex.id); g != gray_.end()) {
+            textures_.release(g->second);
+            gray_.erase(g);
+        }
+    }
     entries_.erase(it);
 }
 
@@ -59,6 +67,11 @@ AssetState AssetCache::request(const std::string& url, const std::string& range,
     return e.state;
 }
 
+TextureId AssetCache::gray(TextureId id) const {
+    const auto it = gray_.find(id);
+    return it == gray_.end() ? id : it->second;
+}
+
 void AssetCache::finish(Entry& e, const std::string& key, std::vector<std::uint8_t> data, bool from_network) {
     if (e.texture) {
         Image img;
@@ -70,7 +83,17 @@ void AssetCache::finish(Entry& e, const std::string& key, std::vector<std::uint8
         }
         e.tex.width = img.width;
         e.tex.height = img.height;
+        Image gray;
+        if (gray_copies_) {  // CSS grayscale(1): Rec. 709 luma
+            gray = img;
+            for (std::size_t i = 0; i + 3 < gray.rgba.size(); i += 4) {
+                std::uint8_t* p = &gray.rgba[i];
+                const auto l = static_cast<std::uint8_t>(std::lround(p[0] * 0.2126 + p[1] * 0.7152 + p[2] * 0.0722));
+                p[0] = p[1] = p[2] = l;
+            }
+        }
         e.tex.id = textures_.create(std::move(img));
+        if (gray_copies_) gray_[e.tex.id] = textures_.create(std::move(gray));
     } else {
         e.bytes = data;
     }

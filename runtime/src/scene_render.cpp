@@ -97,6 +97,66 @@ void draw_figure(int figure_id, int face, Vec2 offset, float scale, Color tint, 
     }
 }
 
+}  // namespace
+
+void add_scanlines(const std::vector<Quad>& quads, DrawList& out, float period, float dim) {
+    if (quads.empty() || period <= 0) return;
+    float y0 = quad_bounds(quads.front()).y, y1 = y0;
+    for (const Quad& q : quads) {
+        const Rect b = quad_bounds(q);
+        y0 = std::min(y0, b.y);
+        y1 = std::max(y1, b.y + b.h);
+    }
+    const float lit = period * 0.75f;  // 3 lit rows, then 1 dim row, on the 4-unit default
+    auto band = [&](float a, float b, float alpha) {
+        const std::vector<Vec2> rows{{-1e5f, a}, {1e5f, a}, {1e5f, b}, {-1e5f, b}};
+        for (const Quad& q : quads)
+            for (Quad& p : clip_quad(q, rows)) {
+                p.has_colors = true;
+                for (Color& c : p.colors) c.a *= alpha;
+                out.quads.push_back(p);
+            }
+    };
+    for (float y = std::floor(y0 / period) * period; y < y1; y += period) {
+        band(y, y + lit, 1);
+        band(y + lit, y + period, dim);
+    }
+}
+
+// cameraFilter gray (the only mode the scripts use): swap in the greyscale copies, grey solid colours.
+// blur: Fate Café's CSS blur(px) on the stage, approximated per quad: each quad is followed by 8 copies
+// offset around a circle, copy k at alpha 1/(k+1), so every layer is the average of its copies over
+// what is already drawn beneath it (redrawing the whole stage per copy washes sprites out).
+void apply_camera_filter(const Camera& cam, const SceneAssets& a, std::size_t first, DrawList& out) {
+    if (cam.filter == "gray" && a.cache) {
+        for (std::size_t i = first; i < out.quads.size(); ++i) {
+            Quad& q = out.quads[i];
+            if (q.texture) q.texture = a.cache->gray(q.texture);
+            auto grey = [](Color& c) { c.r = c.g = c.b = c.r * 0.2126f + c.g * 0.7152f + c.b * 0.0722f; };
+            grey(q.color);
+            for (Color& c : q.colors) grey(c);
+        }
+    }
+    const float r = cam.blur.value();
+    if (r <= 0.05f || first >= out.quads.size()) return;
+    const std::vector<Quad> base(out.quads.begin() + static_cast<std::ptrdiff_t>(first), out.quads.end());
+    out.quads.resize(first);
+    constexpr int kTaps = 8;
+    for (const Quad& src : base) {
+        out.quads.push_back(src);
+        for (int k = 1; k <= kTaps; ++k) {
+            const float ang = 2 * 3.14159265f * static_cast<float>(k) / kTaps, w = 1.f / static_cast<float>(k + 1);
+            Quad q = src;
+            for (Vec2& p : q.pos) p = {p.x + r * std::cos(ang), p.y + r * std::sin(ang)};
+            q.color.a *= w;
+            for (Color& c : q.colors) c.a *= w;
+            out.quads.push_back(q);
+        }
+    }
+}
+
+namespace {
+
 void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& t, DrawList& out) {
     struct Item {
         const Element* e;
@@ -144,7 +204,8 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
         // Surfaces draw into a scratch list in surface coordinates first; charaSpecialEffect masks the
         // finished sprite over its body's box (the first quad).
         DrawList local;
-        DrawList& target = surface || e->special ? local : out;
+        const float roll = e->roll.value();
+        DrawList& target = surface || e->special || roll != 0 ? local : out;
         const StageTransform& tt = surface ? StageTransform{} : t;
         if (e->kind == ElementKind::Chara) {
             FaceAnchor anchor;
@@ -165,10 +226,24 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
             if (e->special && !quads.empty()) quads = apply_special_mask(quads, box, *e->special, special_t(*e->special));
             out.quads.insert(out.quads.end(), quads.begin(), quads.end());
         };
+        // charaRoll turns the sprite (after its mask, as the CSS transform does) about the top centre of
+        // its body box, or that point moved by the script's origin (Fate Café).
+        auto turn = [&](std::vector<Quad>& quads, const Rect& body) {
+            if (roll == 0) return;
+            const Vec2 pivot{body.x + body.w / 2 + e->roll_origin.x, body.y + e->roll_origin.y};
+            for (Quad& q : quads) rotate(q, pivot, roll);
+        };
         if (!surface) {
-            if (e->special && !local.quads.empty()) push(local.quads, quad_bounds(local.quads.front()));
+            if (!local.quads.empty() && (e->special || roll != 0)) {
+                const Rect body = quad_bounds(local.quads.front());
+                std::vector<Quad> quads = std::move(local.quads);
+                if (e->special) quads = apply_special_mask(quads, body, *e->special, special_t(*e->special));
+                turn(quads, body);
+                out.quads.insert(out.quads.end(), quads.begin(), quads.end());
+            }
             continue;
         }
+        if (!local.quads.empty()) turn(local.quads, quad_bounds(local.quads.front()));
         const Vec2 move{lp.offset.x * kMaskOffsetScale, (mask && mask->full_width) ? -lp.offset.y * kMaskOffsetScale : 0.f};
         auto to_stage = [&](Vec2 p) {
             return t.apply({kW / 2 + (p.x - kW / 2) * lp.scale + move.x, kH / 2 + (p.y - kH / 2) * lp.scale + move.y});
@@ -191,9 +266,11 @@ void draw_elements(const Stage& st, const SceneAssets& a, const StageTransform& 
         }
         push(staged, box);
     }
-    if (st.communication) {  // hologram figure: tinted, left of centre
+    if (st.communication) {  // hologram figure: pale blue, left of centre, fine scanlines (gameplay video)
         const float o = st.communication->opacity.value();
-        draw_figure(st.communication->figure_id, st.communication->face, {-256, 0}, 1, {0.55f, 0.8f, 1.f, 0.85f * o}, a, t, out);
+        DrawList holo;
+        draw_figure(st.communication->figure_id, st.communication->face, {-256, 0}, 1, {0.55f, 0.8f, 1.f, 0.85f * o}, a, t, holo);
+        add_scanlines(holo.quads, out);
     }
 }
 
@@ -315,10 +392,12 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
     t.shift = {-cam.x + shake.x, cam.y + shake.y};
 
     // stage layer
+    const std::size_t stage_first = out.quads.size();
     if (!st.prev_background.empty() && st.background_mix.active())
         draw_background(st.prev_background, 1, a, t, out);
     draw_background(st.background, st.background_mix.value(), a, t, out);
     draw_elements(st, a, t, out);
+    apply_camera_filter(st.camera, a, stage_first, out);
     draw_picture_frame(st, a, out);
 
     // screen layer (no camera)

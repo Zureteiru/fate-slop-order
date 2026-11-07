@@ -38,6 +38,11 @@ public:
     // held twice; a later request reads the disk cache again. Empty unless the bytes are Ready.
     std::vector<std::uint8_t> take_bytes(const std::string& url, const std::string& range = {});
 
+    // cameraFilter gray: keep a greyscale copy of every texture decoded from now on (the renderer has no
+    // shaders), for chapters that use the filter. gray() is the copy, or the texture itself.
+    void set_gray_copies(bool on) { gray_copies_ = on; }
+    TextureId gray(TextureId id) const;
+
     void poll();                      // collect finished downloads
     std::size_t pending() const { return inflight_.size(); }
     std::size_t failed() const { return failed_; }
@@ -59,6 +64,8 @@ private:
     std::map<std::string, Entry> entries_;          // by cache key
     std::map<RequestId, std::string> inflight_;     // request -> cache key
     std::size_t failed_ = 0;
+    bool gray_copies_ = false;
+    std::map<TextureId, TextureId> gray_;
 
     AssetState request(const std::string& url, const std::string& range, bool texture, bool fresh = false);
     void finish(Entry& e, const std::string& key, std::vector<std::uint8_t> data, bool from_network);

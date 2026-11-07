@@ -138,6 +138,7 @@ void App::load_wipes(const std::set<std::string>& patterns) {
 void App::request_assets() {
     std::set<int> figures;
     std::set<std::string> backgrounds, images, masks, wipes;
+    bool gray = false;
     const bool female = config_.settings.text.gender == Gender::Female;
     for (const Program& p : programs_) {
         for (const Instr& in : p.code) {
@@ -155,10 +156,12 @@ void App::request_assets() {
             else if (n == "subCameraFilter" && c.arg(1) == "maskEdge" && !c.arg(2).empty()) masks.insert(c.arg(2));
             else if (n == "wipein" || n == "wipeout") wipes.insert(c.has(0) ? c.arg(0) : "leftToRight");
             else if ((n == "pictureFrame" || n == "pictureFrameTop") && c.has(0)) images.insert(c.arg(0));
+            else if (n == "cameraFilter" && c.arg(0) == "gray") gray = true;
             else if (n == "wipeFilter") wipes.insert(c.has(0) ? c.arg(0) : "cinema");
         }
     }
     load_wipes(wipes);
+    cache_.set_gray_copies(gray);
     figures.erase(0);
     figure_ids_.assign(figures.begin(), figures.end());
     for (int f : figure_ids_) {

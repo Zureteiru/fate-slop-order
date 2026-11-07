@@ -840,3 +840,40 @@ TEST(special_mask_radial_keeps_the_centre_and_clears_the_corners) {
     CHECK(opaque_disc);
     CHECK(apply_special_mask({q}, {0, 0, 100, 100}, wipe, 0).size() == 1);
 }
+
+TEST(scanlines_split_a_sprite_into_lit_and_dim_rows) {
+    Quad q;
+    q.pos[0] = {0, 0};
+    q.pos[1] = {10, 0};
+    q.pos[2] = {10, 8};
+    q.pos[3] = {0, 8};
+    DrawList dl;
+    add_scanlines({q}, dl, 4, 0.4f);
+    REQUIRE(!dl.quads.empty());
+    for (const Quad& p : dl.quads) {
+        const Rect b = quad_bounds(p);
+        const float row = std::fmod(b.y, 4.f);
+        CHECK_NEAR(p.colors[0].a, row < 2.9f ? 1.f : 0.4f, 1e-4);  // rows 0-3 lit, 3-4 dim
+    }
+}
+
+TEST(camera_blur_and_gray_filter_the_stage_quads) {
+    DrawList dl;
+    dl.rect({0, 0, 10, 10}, {1, 0, 0, 1});
+    Camera cam;
+    cam.filter = "gray";
+    SceneAssets a;
+    Env env;
+    TextureStore tex;
+    AssetCache cache(env.platform, tex);
+    a.cache = &cache;
+    apply_camera_filter(cam, a, 0, dl);
+    REQUIRE(dl.quads.size() == 1);
+    CHECK_NEAR(dl.quads[0].color.g, 0.2126f, 1e-4);  // red's luma
+    cam.filter.clear();
+    cam.blur.snap(4);
+    apply_camera_filter(cam, a, 0, dl);
+    REQUIRE(dl.quads.size() == 9);  // the quad plus 8 offset copies
+    CHECK_NEAR(dl.quads[8].color.a, 1.f / 9, 1e-4);  // the last copy weighs 1/9: an even average
+    CHECK_NEAR(std::hypot(dl.quads[1].pos[0].x, dl.quads[1].pos[0].y), 4, 1e-3);
+}
