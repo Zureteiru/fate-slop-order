@@ -38,10 +38,15 @@ public:
     // held twice; a later request reads the disk cache again. Empty unless the bytes are Ready.
     std::vector<std::uint8_t> take_bytes(const std::string& url, const std::string& range = {});
 
-    // cameraFilter gray: keep a greyscale copy of every texture decoded from now on (the renderer has no
-    // shaders), for chapters that use the filter. gray() is the copy, or the texture itself.
-    void set_gray_copies(bool on) { gray_copies_ = on; }
+    // cameraFilter gray and the sepia backdrop effects: keep a filtered copy of every texture decoded from
+    // now on (the renderer has no shaders), for chapters that use them. gray() / sepia() are the copy, or
+    // the texture itself.
+    void set_filter_copies(bool gray, bool sepia) {
+        gray_copies_ = gray;
+        sepia_copies_ = sepia;
+    }
     TextureId gray(TextureId id) const;
+    TextureId sepia(TextureId id) const;
 
     void poll();                      // collect finished downloads
     std::size_t pending() const { return inflight_.size(); }
@@ -64,8 +69,8 @@ private:
     std::map<std::string, Entry> entries_;          // by cache key
     std::map<RequestId, std::string> inflight_;     // request -> cache key
     std::size_t failed_ = 0;
-    bool gray_copies_ = false;
-    std::map<TextureId, TextureId> gray_;
+    bool gray_copies_ = false, sepia_copies_ = false;
+    std::map<TextureId, TextureId> gray_, sepia_;
 
     AssetState request(const std::string& url, const std::string& range, bool texture, bool fresh = false);
     void finish(Entry& e, const std::string& key, std::vector<std::uint8_t> data, bool from_network);

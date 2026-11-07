@@ -51,6 +51,7 @@ add_library(vnr_runtime STATIC
     runtime/src/json.cpp
     runtime/src/layer_mask.cpp
     runtime/src/special_mask.cpp
+    runtime/src/effects.cpp
     runtime/src/title_card.cpp
     runtime/src/wipe_mask.cpp
     runtime/src/backlog.cpp

@@ -11,6 +11,7 @@
 #include "vnr/rt/json.h"
 #include "vnr/rt/layer_mask.h"
 #include "vnr/rt/ui_skin.h"
+#include "vnr/rt/effects.h"
 #include "vnr/rt/special_mask.h"
 #include "vnr/rt/title_card.h"
 #include "vnr/rt/wipe_mask.h"
@@ -919,4 +920,69 @@ TEST(title_card_wraps_long_titles) {
     CHECK_NEAR(h, 40 + 26 * 1.2f + 6 + 2 * 54 * 1.25f + 44, 0.01f);  // two title lines
     for (const Quad& q : dl.quads)
         for (const Vec2& p : q.pos) CHECK(p.x >= kViewSafeLeft - 0.01f && p.x <= kViewSafeLeft + kViewSafeWidth + 0.01f);
+}
+
+TEST(effect_names_map_to_programs) {
+    const EffectDef* flare = find_effect("bit_talk_10_LowLevel");
+    REQUIRE(flare);
+    CHECK(flare->program == FxProgram::Flare);
+    CHECK(!flare->loop);
+    CHECK_NEAR(flare->seconds, 0.18f, 1e-6);
+    REQUIRE(find_effect("BIT_SEPIA01_DEPTH_FS"));  // any case
+    CHECK(find_effect("bit_sepia01_depth_fs")->program == FxProgram::Backdrop);
+    REQUIRE(find_effect("bit_talk_explosion_big_new"));  // keyword fallback
+    CHECK(find_effect("bit_talk_explosion_big_new")->program == FxProgram::Fireball);
+    CHECK(find_effect("bit_talk_qwerty") == nullptr);  // unknown: nothing
+    const Image atlas = make_effect_atlas();
+    CHECK(atlas.width == kFxSpriteSize * static_cast<int>(FxSprite::kCount));
+    CHECK(atlas.height == kFxSpriteSize);
+    // the glow sprite is bright in the middle and clear at the corner
+    auto alpha = [&](FxSprite s, int x, int y) {
+        return atlas.rgba[(static_cast<std::size_t>(y) * atlas.width + static_cast<int>(s) * kFxSpriteSize + x) * 4 + 3];
+    };
+    CHECK(alpha(FxSprite::Glow, 64, 64) > 240);
+    CHECK(alpha(FxSprite::Glow, 1, 1) == 0);
+}
+
+TEST(effects_run_once_or_loop_and_follow_their_anchor) {
+    const EffectDef* flare = find_effect("bit_talk_10_lowlevel");
+    const EffectDef* charge = find_effect("bit_talk_06");
+    REQUIRE(flare && charge);
+    DrawList dl;
+    draw_effect(*flare, 0.05, {600, 300}, false, false, 9, 1, dl);
+    REQUIRE(!dl.quads.empty());
+    for (const Quad& q : dl.quads) CHECK(q.texture == 9 && q.blend == Blend::Add);
+    const Rect b = quad_bounds(dl.quads[0]);
+    CHECK_NEAR(b.x + b.w / 2, 600, 0.5f);  // centred on the anchor
+    CHECK_NEAR(b.y + b.h / 2, 300, 0.5f);
+    dl.clear_all();
+    draw_effect(*flare, 0.5, {600, 300}, false, false, 9, 1, dl);
+    CHECK(dl.quads.empty());  // a one-shot is over after its run
+    draw_effect(*charge, 10.2, {600, 300}, false, false, 9, 1, dl);
+    CHECK(!dl.quads.empty());  // loops keep going
+    // character effects sit on their character; hidden characters show none
+    Stage st;
+    Element& e = st.elements["A"];
+    e.code = "A";
+    e.shown = true;
+    e.pos.snap({100, 0});
+    Effect fx;
+    fx.name = "bit_talk_10_LowLevel";
+    fx.layer = EffectLayer::Chara;
+    fx.target = "A";
+    fx.elapsed = 0.05;
+    st.effects.push_back(fx);
+    SceneAssets a;
+    a.fx_atlas = 9;
+    dl.clear_all();
+    draw_effects(st, a, false, dl);
+    REQUIRE(!dl.quads.empty());
+    const Rect c = quad_bounds(dl.quads[0]);
+    CHECK_NEAR(c.x + c.w / 2, kStageWidth / 2.f + 100, 0.5f);
+    dl.clear_all();
+    draw_effects(st, a, true, dl);
+    CHECK(dl.quads.empty());  // not a back effect
+    e.shown = false;
+    draw_effects(st, a, false, dl);
+    CHECK(dl.quads.empty());
 }

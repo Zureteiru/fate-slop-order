@@ -12,6 +12,7 @@
 #include "vnr/rt/layer_mask.h"
 #include "vnr/rt/text.h"
 #include "vnr/rt/ui_skin.h"
+#include "vnr/rt/effects.h"
 #include "vnr/rt/title_card.h"
 #include "vnr/rt/wipe_mask.h"
 
@@ -33,6 +34,7 @@ struct SceneAssets {
     bool auto_mode = false;  // AUTO button lit
     std::map<std::string, LayerMask> masks;  // subCameraFilter mask images, by name (decoded by the App)
     WipeLayer wipe, wipe_filter;             // this frame's wipe masks (WipeMasks, owned by the App)
+    TextureId fx_atlas = 0;                  // effect sprites (make_effect_atlas)
     TitleTexts titles;                       // what bit_chapterstart / bit_queststart cards say
     float picture_frame_opacity = 1;         // pictureFrame fade-in (Fate Café: 0.2 s), kept by the App
 };
@@ -78,7 +80,10 @@ std::vector<Rect> choice_rects(const ChoiceOp& choice, const UiLayout& ui, bool 
 void add_scanlines(const std::vector<Quad>& quads, DrawList& out, float period = 4, float dim = 0.4f);
 
 // cameraFilter gray and camera blur over the stage quads drawn from index `first` on.
-void apply_camera_filter(const Camera& cam, const SceneAssets& assets, std::size_t first, DrawList& out);
+// `sepia`: a backdrop effect (bit_sepia01…) is on.
+void apply_camera_filter(const Camera& cam, const SceneAssets& assets, std::size_t first, DrawList& out, bool sepia = false);
+// The named effects on one side of the characters (back: backEffect / charaBackEffect).
+void draw_effects(const Stage& st, const SceneAssets& assets, bool back, DrawList& out);
 
 // The pictureFrame overlay (part of render_scene).
 void draw_picture_frame(const Stage& st, const SceneAssets& assets, DrawList& out);

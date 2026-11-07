@@ -1,5 +1,6 @@
 #include "vnr/rt/asset_cache.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace vnr::rt {
@@ -44,10 +45,11 @@ void AssetCache::forget(const std::string& url, const std::string& range) {
     if (it == entries_.end() || it->second.state == AssetState::Loading) return;
     if (it->second.texture && it->second.tex.id) {
         textures_.release(it->second.tex.id);
-        if (const auto g = gray_.find(it->second.tex.id); g != gray_.end()) {
-            textures_.release(g->second);
-            gray_.erase(g);
-        }
+        for (auto* copies : {&gray_, &sepia_})
+            if (const auto g = copies->find(it->second.tex.id); g != copies->end()) {
+                textures_.release(g->second);
+                copies->erase(g);
+            }
     }
     entries_.erase(it);
 }
@@ -72,6 +74,34 @@ TextureId AssetCache::gray(TextureId id) const {
     return it == gray_.end() ? id : it->second;
 }
 
+TextureId AssetCache::sepia(TextureId id) const {
+    const auto it = sepia_.find(id);
+    return it == sepia_.end() ? id : it->second;
+}
+
+namespace {
+// Fate Café's backdrop: sepia(0.85) saturate(0.9) contrast(1.04) brightness(0.96), as CSS defines them.
+void sepia_filter(Image& img) {
+    const float a = 0.85f, b = 1 - a, s = 0.9f;
+    for (std::size_t i = 0; i + 3 < img.rgba.size(); i += 4) {
+        std::uint8_t* p = &img.rgba[i];
+        const float r = p[0] / 255.f, g = p[1] / 255.f, bl = p[2] / 255.f;
+        float o[3] = {(0.393f + 0.607f * b) * r + (0.769f - 0.769f * b) * g + (0.189f - 0.189f * b) * bl,
+                      (0.349f - 0.349f * b) * r + (0.686f + 0.314f * b) * g + (0.168f - 0.168f * b) * bl,
+                      (0.272f - 0.272f * b) * r + (0.534f - 0.534f * b) * g + (0.131f + 0.869f * b) * bl};
+        const float sr[3][3] = {{0.213f + 0.787f * s, 0.715f - 0.715f * s, 0.072f - 0.072f * s},
+                                {0.213f - 0.213f * s, 0.715f + 0.285f * s, 0.072f - 0.072f * s},
+                                {0.213f - 0.213f * s, 0.715f - 0.715f * s, 0.072f + 0.928f * s}};
+        float q[3];
+        for (int k = 0; k < 3; ++k) q[k] = sr[k][0] * o[0] + sr[k][1] * o[1] + sr[k][2] * o[2];
+        for (int k = 0; k < 3; ++k) {
+            const float v = ((q[k] - 0.5f) * 1.04f + 0.5f) * 0.96f;
+            p[k] = static_cast<std::uint8_t>(std::lround(std::clamp(v, 0.f, 1.f) * 255));
+        }
+    }
+}
+}  // namespace
+
 void AssetCache::finish(Entry& e, const std::string& key, std::vector<std::uint8_t> data, bool from_network) {
     if (e.texture) {
         Image img;
@@ -92,8 +122,14 @@ void AssetCache::finish(Entry& e, const std::string& key, std::vector<std::uint8
                 p[0] = p[1] = p[2] = l;
             }
         }
+        Image sep;
+        if (sepia_copies_) {
+            sep = img;
+            sepia_filter(sep);
+        }
         e.tex.id = textures_.create(std::move(img));
         if (gray_copies_) gray_[e.tex.id] = textures_.create(std::move(gray));
+        if (sepia_copies_) sepia_[e.tex.id] = textures_.create(std::move(sep));
     } else {
         e.bytes = data;
     }

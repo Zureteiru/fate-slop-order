@@ -127,7 +127,11 @@ void add_scanlines(const std::vector<Quad>& quads, DrawList& out, float period, 
 // blur: Fate Café's CSS blur(px) on the stage, approximated per quad: each quad is followed by 8 copies
 // offset around a circle, copy k at alpha 1/(k+1), so every layer is the average of its copies over
 // what is already drawn beneath it (redrawing the whole stage per copy washes sprites out).
-void apply_camera_filter(const Camera& cam, const SceneAssets& a, std::size_t first, DrawList& out) {
+void apply_camera_filter(const Camera& cam, const SceneAssets& a, std::size_t first, DrawList& out, bool sepia) {
+    if (sepia && a.cache)
+        for (std::size_t i = first; i < out.quads.size(); ++i)
+            if (out.quads[i].texture && out.quads[i].texture != a.fx_atlas)
+                out.quads[i].texture = a.cache->sepia(out.quads[i].texture);
     if (cam.filter == "gray" && a.cache) {
         for (std::size_t i = first; i < out.quads.size(); ++i) {
             Quad& q = out.quads[i];
@@ -152,6 +156,25 @@ void apply_camera_filter(const Camera& cam, const SceneAssets& a, std::size_t fi
             for (Color& c : q.colors) c.a *= w;
             out.quads.push_back(q);
         }
+    }
+}
+
+void draw_effects(const Stage& st, const SceneAssets& a, bool back, DrawList& out) {
+    for (const Effect& fx : st.effects) {
+        const bool fx_back = fx.layer == EffectLayer::Back || fx.layer == EffectLayer::CharaBack;
+        if (fx_back != back) continue;
+        const EffectDef* d = find_effect(fx.name);
+        if (!d) continue;
+        // stage effects centre on the view; character effects on that character's chest
+        Vec2 anchor{kViewSafeLeft + kViewSafeWidth / 2, kViewTop + kViewHeight / 2};
+        if (fx.layer == EffectLayer::Chara || fx.layer == EffectLayer::CharaBack) {
+            const auto it = st.elements.find(fx.target);
+            if (it == st.elements.end() || !it->second.shown) continue;
+            const Vec2 p = it->second.pos.value();
+            anchor = {kW / 2 + p.x, kH * 0.45f - p.y};
+        }
+        if (fx.pos) anchor = {anchor.x + fx.pos->x, anchor.y - fx.pos->y};
+        draw_effect(*d, fx.elapsed, anchor, fx.flip_h, fx.flip_v, a.fx_atlas, fx_seed(fx.name), out);
     }
 }
 
@@ -401,8 +424,13 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
     if (!st.prev_background.empty() && st.background_mix.active())
         draw_background(st.prev_background, 1, a, t, out);
     draw_background(st.background, st.background_mix.value(), a, t, out);
+    draw_effects(st, a, true, out);
     draw_elements(st, a, t, out);
-    apply_camera_filter(st.camera, a, stage_first, out);
+    draw_effects(st, a, false, out);
+    bool sepia = false;
+    for (const Effect& fx : st.effects)
+        if (const EffectDef* d = find_effect(fx.name)) sepia = sepia || d->program == FxProgram::Backdrop;
+    apply_camera_filter(st.camera, a, stage_first, out, sepia);
     draw_picture_frame(st, a, out);
     if (st.title_card) draw_title_card(*st.title_card, a.titles, atlas, out);
 
