@@ -57,7 +57,7 @@ The user's exceptions, which override the rest of the spec:
 
 | Host | What it serves |
 |---|---|
-| `fatecafe.com/assets/*` | The Vite bundle (lazy chunks per page), CSS, two `FGO Main` woff2 subsets, `img_talk_textbg-*.png` (text box), `img_talk_selectbg-frame-*.png` (choice frame) and `fgochoice-*.mp3` (choice click sound). The 33 wipe textures are embedded as base64 PNGs inside the reader chunk. |
+| `fatecafe.com/assets/*` | The Vite bundle (lazy chunks per page), CSS, two `FGO Main` woff2 subsets, `img_talk_textbg-*.png` (text box), `img_talk_selectbg-frame-*.png` (choice frame) and `fgochoice-*.mp3` (choice click sound). The 33 wipe textures are 512×512 greyscale PNGs that the reader view chunk (`ReaderChapterView.*.js`) references, either as `/assets/<name>-<hash>.png` files or inline base64; `tools/install_wipes.sh` fetches them from there. |
 | `assets.fatecafe.com/data/atlas/*` | Fate Café's own JSON: `reader.json` (catalogue, about 915 KB), `reader-translations/<chapter>.json` (PT-BR plus aligned EN/JP lines), `reader-event-translations.json` and banner data. |
 | `static.atlasacademy.io` | **Raw scripts** and all game assets. |
 | `api.atlasacademy.io` | `GET /raw/<region>/svtScript?charaId=…&charaId=…`: one batched request per part, covering every `charaSet` figure ID in that part. |
@@ -355,17 +355,23 @@ All values are measured in stage units at the default settings.
 - Named particle effects are **canvas 2D procedural "programs"**.
 - No WebGL is used.
 
+**Where vnreader differs on purpose:**
+
+- `pictureFrame` / `pictureFrameTop`: the frame image's top 626 rows are drawn at stage scale (Fate Café squeezes them into the 576 visible rows) and under the text box, so the cinema bars never cover the text.
+- The hologram (`communicationChara`) is pale blue with scanlines, as in gameplay video; Fate Café draws the plain figure with a blue glow.
+- Title-card text comes from the catalogue (no catalogue, no card); chapter labels keep their own case.
+
 ### Screen
 
 - **Fade:** a full-screen colour layer whose opacity animates. `fadein` goes 1→0 and `fadeout` goes 0→1. The last opacity persists as a "screen overlay" into later beats.
 - **Flash:** two layers (§2). In Fuyuki line 488 (`flashin once 1 0.4 FFFFFFFF 00000000`), the measured opacity rose 0→1 over about 1 s, then a white layer faded out over 0.4 s.
 - **Wipe:**
-  - Each of 33 patterns has a bundled **256×256 greyscale texture**, stretched over the stage: `cinema`, `circleIn`, `circleOut`, `clash`, `cutAcross`, `damage`, `downToUp`, `fire`, `heartOutBig`, `leftDownToRightUp`, `leftToRight`, `leftUpToRightDown`, `magic`, `moya`, `openEye`, `polka02`, `polka04`, `rectangleStripDownToUp`, `rectangleStripLeftToRight`, `rectangleStripRightToLeft`, `rectangleStripUpToDown`, `rightDownToLeftUp`, `rightToLeft`, `rightUpToLeftDown`, `rollFlashRight`, `rollLeft`, `rollRight`, `sazanami`, `sideBlind`, `upToDown`, `uzumaki`, `uzumakiBig`, `windmill`.
+  - Each of 33 patterns has a bundled **512×512 greyscale texture** (drawn into a 256×256 canvas, red channel = v), stretched over the stage: `cinema`, `circleIn`, `circleOut`, `clash`, `cutAcross`, `damage`, `downToUp`, `fire`, `heartOutBig`, `leftDownToRightUp`, `leftToRight`, `leftUpToRightDown`, `magic`, `moya`, `openEye`, `polka02`, `polka04`, `rectangleStripDownToUp`, `rectangleStripLeftToRight`, `rectangleStripRightToLeft`, `rectangleStripUpToDown`, `rightDownToLeftUp`, `rightToLeft`, `rightUpToLeftDown`, `rollFlashRight`, `rollLeft`, `rollRight`, `sazanami`, `sideBlind`, `upToDown`, `uzumaki`, `uzumakiBig`, `windmill`.
   - **Aliases:** `rectangleLeftToRight` and `rectangleRightToLeft` map to the strip versions. Names are matched case-insensitively.
   - **Per-texel alpha:** let p = progress (0→1 for `out`, 1→0 for `in`), g = gradation and v = texel value. Then threshold = p × (1 + g); alpha = clamp((threshold − v) ÷ g) when g > 0, else a hard step.
   - **Fill colour:** black.
   - **Unknown pattern:** no texture is drawn, and the screen jumps to a solid fill at the end.
-  - **Texture source:** shipped in Fate Café's bundle, almost certainly taken from the game. We need our own copies (see Unknowns).
+  - **Texture source:** shipped in Fate Café's bundle, almost certainly taken from the game. vnreader never commits them: `tools/install_wipes.sh` installs them (SHA-256 pinned) into `<user folder>/wipes/<name>.png`. Without them vnreader uses built-in fields of the same shapes (measured from the textures), and an even fade for the rest.
 - **Strips:** a CSS `reader-fgo-strips` animation exists for strip-style patterns.
 - **Shake:** see §2. Amplitude in stage px; the default if not given is 3 px.
 - **`cameraFilter`:**
@@ -398,6 +404,9 @@ All values are measured in stage units at the default settings.
 - **Placement:** stage centre + the character's slot position × its scale + the effect's offset. The optional `x,y` overrides this. `H`/`V`/`HV` flips the effect.
 - **Fallback:** **an unrecognised effect name renders nothing.** The command is accepted, so `charaEffectStop` still works.
 - **For vnreader:** we only need the name→program table as a design reference. The look of each program has to be re-created.
+  - Done in `runtime/src/effects.cpp`: our own table for the most used names (timing, size and colour follow Fate Café's entries; the top 40 names are 58% of the 789 effect uses in 191 main-story scripts), keyword fallbacks, 17 programs drawn from a procedural sprite atlas.
+  - The renderer has no shaders, so `cameraFilter gray` and the sepia backdrop use greyscale / sepia copies of each texture, made at decode time for chapters that use them.
+  - Camera blur redraws each stage quad at 8 offsets (an even average), not a true Gaussian.
 
 ---
 

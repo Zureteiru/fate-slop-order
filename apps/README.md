@@ -155,6 +155,17 @@ bash tools/install_font.sh "path/to/FOT-Skip Std B.otf"
 It goes to `<user folder>/fonts/FOT-SkipStd-B.otf`. Without it (or if the file can't be opened) the
 app uses the OS's Japanese font.
 
+The wipe transitions (`wipein`, `wipeout`, `wipeFilter`) use the game's 33 greyscale wipe masks, as
+Fate Café does. They are game art too, so they are installed the same way and never committed:
+
+```bash
+bash tools/install_wipes.sh
+```
+
+With no argument the script fetches them from fatecafe.com (about 1.6 MB); with a folder it copies
+`<name>.png` files from there instead. Each file's SHA-256 is checked, and they go to
+`<user folder>/wipes/`. Without them the app draws built-in wipes of the same shapes.
+
 The layout follows the game, not Fate Café, and was matched against 1080p NA gameplay video to
 within 1–2 px (`--smoke 0 --until "text"` captures the frame for a given line):
 
