@@ -32,6 +32,7 @@ struct SceneAssets {
     bool auto_mode = false;  // AUTO button lit
     std::map<std::string, LayerMask> masks;  // subCameraFilter mask images, by name (decoded by the App)
     WipeLayer wipe, wipe_filter;             // this frame's wipe masks (WipeMasks, owned by the App)
+    float picture_frame_opacity = 1;         // pictureFrame fade-in (Fate Café: 0.2 s), kept by the App
 };
 
 // Layout of the story UI (stage units), shared with input hit-testing. Every number is measured
@@ -69,6 +70,9 @@ enum class StoryButton { None, Log, Auto };
 StoryButton story_button_at(const UiLayout& ui, Vec2 p, bool text_box_visible);
 
 std::vector<Rect> choice_rects(const ChoiceOp& choice, const UiLayout& ui, bool text_box_visible);
+
+// The pictureFrame overlay (part of render_scene).
+void draw_picture_frame(const Stage& st, const SceneAssets& assets, DrawList& out);
 
 void render_scene(const Player& player, const SceneAssets& assets, GlyphAtlas& atlas, const UiLayout& ui,
                   DrawList& out);

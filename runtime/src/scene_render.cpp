@@ -249,6 +249,45 @@ std::vector<Rect> choice_rects(const ChoiceOp& choice, const UiLayout& ui, bool 
     return rects;
 }
 
+// pictureFrame / pictureFrameTop: an Image asset whose top 626 rows are a stage-sized overlay for
+// the 1024-wide view (cut063_cinema: black bars at y 0-92 and 534-626). Drawn in stage units, its
+// edge columns repeated out to wider screens. Fate Café draws both commands alike; without the image
+// it shades the top and bottom 18% of the view.
+void draw_picture_frame(const Stage& st, const SceneAssets& a, DrawList& out) {
+    if (st.picture_frame.empty() || a.picture_frame_opacity <= 0) return;
+    const float op = std::min(1.f, a.picture_frame_opacity);
+    const TextureAsset* tex = a.cache ? a.cache->texture(image_url(st.picture_frame, a.region)) : nullptr;
+    if (tex && tex->width > 0) {
+        const float w = static_cast<float>(tex->width), sh = kH * w / kViewSafeWidth;
+        const float h = std::min(static_cast<float>(tex->height), sh), dh = kH * h / sh;
+        const float l = kViewSafeLeft, r = kViewSafeLeft + kViewSafeWidth;
+        const Color c{1, 1, 1, op};
+        out.image(tex->id, {0, 0, w, h}, {l, 0, kViewSafeWidth, dh}, c);
+        out.image(tex->id, {0, 0, 1, h}, {0, 0, l, dh}, c);
+        out.image(tex->id, {w - 1, 0, 1, h}, {r, 0, kW - r, dh}, c);
+        return;
+    }
+    const float band = kViewHeight * 0.18f, dark = 0.62f * op;
+    Quad top;
+    top.pos[0] = {0, kViewTop};
+    top.pos[1] = {kW, kViewTop};
+    top.pos[2] = {kW, kViewTop + band};
+    top.pos[3] = {0, kViewTop + band};
+    top.has_colors = true;
+    top.colors[0] = top.colors[1] = {0, 0, 0, dark};
+    top.colors[2] = top.colors[3] = {0, 0, 0, 0};
+    Quad bottom = top;
+    const float b = kViewTop + kViewHeight;
+    bottom.pos[0] = {0, b - band};
+    bottom.pos[1] = {kW, b - band};
+    bottom.pos[2] = {kW, b};
+    bottom.pos[3] = {0, b};
+    bottom.colors[0] = bottom.colors[1] = {0, 0, 0, 0};
+    bottom.colors[2] = bottom.colors[3] = {0, 0, 0, dark};
+    out.quads.push_back(top);
+    out.quads.push_back(bottom);
+}
+
 void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas, const UiLayout& ui, DrawList& out) {
     const Stage& st = player.stage();
     StageTransform t;
@@ -262,6 +301,7 @@ void render_scene(const Player& player, const SceneAssets& a, GlyphAtlas& atlas,
         draw_background(st.prev_background, 1, a, t, out);
     draw_background(st.background, st.background_mix.value(), a, t, out);
     draw_elements(st, a, t, out);
+    draw_picture_frame(st, a, out);
 
     // screen layer (no camera)
     const Rect full{0, 0, kW, kH};

@@ -154,6 +154,7 @@ void App::request_assets() {
             else if (n == "imageSet" || n == "verticalImageSet" || n == "horizontalImageSet" || n == "imageChange") images.insert(c.arg(1));
             else if (n == "subCameraFilter" && c.arg(1) == "maskEdge" && !c.arg(2).empty()) masks.insert(c.arg(2));
             else if (n == "wipein" || n == "wipeout") wipes.insert(c.has(0) ? c.arg(0) : "leftToRight");
+            else if ((n == "pictureFrame" || n == "pictureFrameTop") && c.has(0)) images.insert(c.arg(0));
             else if (n == "wipeFilter") wipes.insert(c.has(0) ? c.arg(0) : "cinema");
         }
     }
@@ -442,6 +443,12 @@ void App::render() {
         wipes_.update(player_->stage(), textures_);
         scene_.wipe = wipes_.wipe;
         scene_.wipe_filter = wipes_.filter;
+        const std::string& frame = player_->stage().picture_frame;
+        if (frame != frame_name_) {  // a new frame fades in over Fate Café's default 0.2 s
+            frame_name_ = frame;
+            frame_start_ = scene_.clock;
+        }
+        scene_.picture_frame_opacity = static_cast<float>(std::clamp((scene_.clock - frame_start_) / 0.2, 0.0, 1.0));
         render_scene(*player_, scene_, atlas_, ui_, draw_);
         log_.draw(player_->backlog(), atlas_, draw_);
         return;

@@ -101,6 +101,8 @@ private:
     AppConfig config_;
     TextureStore textures_;
     WipeMasks wipes_;
+    std::string frame_name_;  // pictureFrame shown last frame, and when it appeared (scene clock)
+    double frame_start_ = 0;
     AssetCache cache_;
     AudioDirector audio_;
     SharedBytes choice_sound_;  // null when not installed

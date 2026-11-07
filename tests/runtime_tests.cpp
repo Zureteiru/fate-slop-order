@@ -732,3 +732,47 @@ TEST(wipe_masks_draw_a_texture_mask_or_an_even_fade) {
     draw_wipe_layer(wm.filter, dl);
     CHECK(dl.quads.size() == 2);
 }
+
+TEST(picture_frame_covers_the_stage_and_fades_in) {
+    Env env;
+    const std::string url = image_url("cut063_cinema", Region::NA);
+    env.http.handler = [&](const HttpRequest& r) {
+        HttpResult res;
+        if (r.url == url) {
+            res.status = 200;
+            res.body = testpng::solid(1024, 1024, 0x000000ffu);
+        }
+        return res;
+    };
+    TextureStore tex;
+    AssetCache cache(env.platform, tex);
+    cache.request_texture(url);
+    for (int i = 0; i < 100 && !cache.texture(url); ++i) cache.poll();
+    REQUIRE(cache.texture(url));
+    Stage st;
+    st.picture_frame = "cut063_cinema";
+    SceneAssets a;
+    a.cache = &cache;
+    DrawList dl;
+    draw_picture_frame(st, a, dl);
+    REQUIRE(dl.quads.size() == 3);  // the 1024-wide view plus edge columns out to the stage edges
+    const Quad& q = dl.quads[0];
+    CHECK(near(q.pos[0], {kViewSafeLeft, 0}));
+    CHECK(near(q.pos[2], {kViewSafeLeft + kViewSafeWidth, static_cast<float>(kStageHeight)}));  // top 626 rows = stage
+    CHECK_NEAR(q.src.h, 626, 0.01f);
+    a.picture_frame_opacity = 0.5f;
+    dl.clear_all();
+    draw_picture_frame(st, a, dl);
+    CHECK_NEAR(dl.quads[0].color.a, 0.5f, 1e-6);
+    // no image: Fate Café's fallback shades the top and bottom of the view
+    st.picture_frame = "missing_frame";
+    dl.clear_all();
+    draw_picture_frame(st, a, dl);
+    REQUIRE(dl.quads.size() == 2);
+    CHECK(dl.quads[0].has_colors);
+    CHECK_NEAR(dl.quads[0].colors[0].a, 0.31f, 1e-4);  // 0.62 at half opacity
+    st.picture_frame.clear();
+    dl.clear_all();
+    draw_picture_frame(st, a, dl);
+    CHECK(dl.quads.empty());
+}
