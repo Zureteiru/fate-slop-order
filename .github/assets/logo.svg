@@ -1,23 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
-  <polygon points="0,0 82,0 96,14 96,96 0,96" fill="#0b0b0c"/>
-  <!-- registration marks -->
-  <g stroke="#5c5c5f" stroke-width="1" fill="none">
-    <path d="M6 14 V6 H14"/><path d="M6 82 V90 H14"/><path d="M82 90 H90 V82"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <rect width="120" height="120" fill="#0a1428"/>
+  <!-- Rayshift circle -->
+  <g fill="none" stroke="#d6b25e">
+    <circle cx="60" cy="60" r="57" stroke-width="1.4"/>
+    <circle cx="60" cy="60" r="53" stroke-width="5" stroke-dasharray="0.7 2.63"/>
+    <circle cx="60" cy="60" r="49" stroke-width="0.6"/>
+    <circle cx="60" cy="60" r="44" stroke-width="3" stroke-dasharray="11 3" opacity="0.75"/>
+    <circle cx="60" cy="60" r="40" stroke-width="0.6"/>
+    <g stroke-width="0.6" opacity="0.8">
+      <rect x="33" y="33" width="54" height="54"/>
+      <rect x="33" y="33" width="54" height="54" transform="rotate(30 60 60)"/>
+      <rect x="33" y="33" width="54" height="54" transform="rotate(60 60 60)"/>
+    </g>
   </g>
-  <!-- the sigil -->
+  <g fill="#d6b25e">
+    <polygon points="60,4 62.5,9 60,14 57.5,9"/>
+    <polygon points="60,106 62.5,111 60,116 57.5,111"/>
+    <polygon points="4,60 9,57.5 14,60 9,62.5"/>
+    <polygon points="106,60 111,57.5 116,60 111,62.5"/>
+  </g>
+  <!-- angular seal -->
   <g fill="#ecebe4">
-    <polygon points="48,12 50.4,42 48,84 45.6,42"/>
-    <path d="M51 33 L76 17 L52 38.5 Z"/>
-    <path d="M45 33 L20 17 L44 38.5 Z"/>
-    <path d="M52 45.5 L66 44 L52 47.5 Z"/>
-    <path d="M44 45.5 L30 44 L44 47.5 Z"/>
-    <path d="M51 54 L73 76 L50 58.5 Z"/>
-    <path d="M45 54 L23 76 L46 58.5 Z"/>
+    <polygon points="58,55 70,24 65,44 62.5,57"/>
+    <polygon points="58,55 70,24 65,44 62.5,57" transform="rotate(120 60 60)"/>
+    <polygon points="58,55 70,24 65,44 62.5,57" transform="rotate(240 60 60)"/>
+    <polygon points="65,40 74,38 66,43"/>
+    <polygon points="65,40 74,38 66,43" transform="rotate(120 60 60)"/>
+    <polygon points="65,40 74,38 66,43" transform="rotate(240 60 60)"/>
   </g>
-  <g stroke="#ecebe4" stroke-width="0.7" fill="none" opacity="0.55">
-    <path d="M76 17 L82 26"/><path d="M20 17 L14 26"/><path d="M73 76 L80 70"/><path d="M23 76 L16 70"/>
-  </g>
-  <!-- accent -->
-  <polygon points="48,40 51.5,46 48,52 44.5,46" fill="#c6ff00"/>
-  <rect x="84" y="20" width="3" height="12" fill="#c6ff00"/>
+  <polygon points="60,54.5 64.8,63 55.2,63" fill="#c8102e"/>
 </svg>
