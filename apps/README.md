@@ -31,6 +31,7 @@ A wrapper is small. It must:
 |---|---|---|---|---|---|---|
 | Windows | `apps/desktop` (`os_windows.cpp`) | WinHTTP | `%LOCALAPPDATA%\vnreader\cache` | `%LOCALAPPDATA%\vnreader` | Yu Gothic / Meiryo | **builds and runs** |
 | macOS | `apps/desktop` + `os_posix.cpp` | libcurl (ships with macOS) | `~/Library/Caches/vnreader` | `~/Library/Application Support/vnreader` | Hiragino Sans | later step |
+| Linux / PortMaster | `apps/desktop` (`os_posix.cpp`) | libcurl, loaded at run time if present | `userdata/cache` next to the binary, else `$XDG_CACHE_HOME/vnreader` | `userdata/`, else `$XDG_DATA_HOME/vnreader` | `userdata/fonts/system.*`, Noto CJK, else the game font | **builds** (`tools/build_portmaster.sh`); runs under arm64 emulation, not yet on a handheld |
 | Switch | `apps/switch` | libcurl (devkitPro portlib) | `sdmc:/switch/vnreader/cache` | `sdmc:/switch/vnreader` | system shared font (Standard, via `pl`) | **builds** (`tools/build_switch.sh`); not yet run on hardware |
 | Android | `apps/android` (Gradle + SDLActivity) | Java `HttpURLConnection` over JNI | app files dir | app external files dir | `/system/fonts` Noto CJK | later step; needs Android Studio (JDK 17 + NDK) |
 
@@ -85,6 +86,7 @@ vnreader.exe --no-audio   # no sound device (the mixer still runs in real time, 
 | Y | dictionary popup on the first word of the line (in the log: its newest entry on screen); Y again closes it |
 | with the popup open: ← → / d-pad ← → | previous / next word |
 | with the popup open: ↑ ↓ / d-pad ↑ ↓, wheel, sticks | previous / next entry |
+| with the popup open: tap / click a word (dialogue or log) | look that word up instead (Switch touch screen) |
 | with the popup open: click outside, Space / A, Esc / B | close it (nothing else happens) |
 
 ## Switch
@@ -104,6 +106,29 @@ bash tools/build_switch.sh          # -> build-switch/apps/switch/vnreader.nro
   shared font; it always opens the picker (no command-line options); the log goes to stdout (`nxlink -s`) and
   `sdmc:/switch/vnreader/vnreader.log`. Fullscreen 1280x720, touch screen and Joy-Con / Pro Controller through
   SDL (A advance, B back, X log, Y lookup, − auto, L / R save / load, + back / quit).
+
+## PortMaster (Anbernic RG28XX and other aarch64 handhelds)
+
+The Linux build of `apps/desktop`, cross-compiled for aarch64 in Docker (`tools/portmaster/`):
+
+```bash
+bash tools/build_portmaster.sh      # -> build-portmaster/vnreader.zip
+```
+
+- **Package:** `vnreader.sh` (PortMaster launcher, runs `--fullscreen`) and `vnreader/` (the binary, a README,
+  an empty `userdata/`). Unzip into the device's `ports` folder and copy the PC's `userdata/` contents into
+  `ports/vnreader/userdata/` (the binary finds it as the portable folder, as on Windows).
+- **Linking:** built on Debian bullseye (needs glibc 2.29+), libstdc++ static, SDL2 dynamic
+  (`-DVNR_SDL_SHARED=ON`): the firmware's `libSDL2-2.0.so.0` is used (2.0.18+ needed for `SDL_RenderGeometry`).
+  libcurl is `dlopen`ed: without it, or without Wi-Fi (the RG28XX has none), the reader runs offline from
+  `userdata/cache/`, so read the parts on the PC first.
+- **Screen:** the RG28XX's 640x480 shows the 16:9 stage letterboxed at 640x360.
+- **Check without a device** (plays Fuyuki from `userdata/cache` under arm64 emulation, using the SDL built
+  alongside):
+
+  ```bash
+  MSYS_NO_PATHCONV=1 docker run --rm --platform linux/arm64 -v "$(pwd -W):/src" -w /src -e SDL_VIDEODRIVER=offscreen -e LD_LIBRARY_PATH=/src/build-portmaster/_deps/sdl2-build debian:bullseye ./build-portmaster/vnreader.aarch64 --smoke 5 --no-audio --screenshot build-portmaster/smoke.bmp
+  ```
 
 ## Dictionary
 

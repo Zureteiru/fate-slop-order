@@ -3,8 +3,15 @@
 # or SDL2::SDL2 target themselves; otherwise a pinned release is downloaded and built.
 if(NOT TARGET SDL2::SDL2-static AND NOT TARGET SDL2::SDL2)
     include(FetchContent)
-    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    # VNR_SDL_SHARED: link libSDL2-2.0.so.0 instead, so a handheld uses its firmware's SDL (KMSDRM, its
+    # GPU driver, its controller setup). The library built here only provides the link-time symbols.
+    option(VNR_SDL_SHARED "Link SDL2 as a shared library (PortMaster)" OFF)
+    set(SDL_SHARED ${VNR_SDL_SHARED} CACHE BOOL "" FORCE)
+    if(VNR_SDL_SHARED)
+        set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+    else()
+        set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    endif()
     set(SDL_TEST OFF CACHE BOOL "" FORCE)
     FetchContent_Declare(SDL2
         URL https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz

@@ -346,6 +346,20 @@ bool App::ensure_dict() {
     return false;
 }
 
+// Looks up the word at `pos` in the dialogue (or the open log). False when `pos` is on no character.
+bool App::lookup_at(Vec2 pos) {
+    const std::vector<LookupTarget> story{story_target()};
+    for (const LookupTarget& t : log_.is_open() ? log_targets_ : story) {
+        const int i = box_at(t.boxes, pos);
+        if (i < 0) continue;
+        if (lookup_.is_open() && lookup_.target_id() == t.id && lookup_.start() == static_cast<std::size_t>(i))
+            return true;
+        if (ensure_dict()) lookup_.open(dict_, t, static_cast<std::size_t>(i));  // closes when nothing matches
+        return true;
+    }
+    return false;
+}
+
 bool App::handle_lookup(const InputEvent& e) {
     using K = InputEvent::Kind;
     if (swallow_pointer_ && (e.kind == K::PointerMove || e.kind == K::PointerUp)) {
@@ -354,16 +368,7 @@ bool App::handle_lookup(const InputEvent& e) {
     }
     if (e.kind == K::LookupAt) {
         if (lookup_.contains(e.pos)) return true;  // moving onto the popup keeps it
-        const std::vector<LookupTarget> story{story_target()};
-        for (const LookupTarget& t : log_.is_open() ? log_targets_ : story) {
-            const int i = box_at(t.boxes, e.pos);
-            if (i < 0) continue;
-            if (lookup_.is_open() && lookup_.target_id() == t.id && lookup_.start() == static_cast<std::size_t>(i))
-                return true;
-            if (ensure_dict()) lookup_.open(dict_, t, static_cast<std::size_t>(i));  // closes when nothing matches
-            return true;
-        }
-        lookup_.close();  // Shift over no text
+        if (!lookup_at(e.pos)) lookup_.close();    // Shift over no text
         return true;
     }
     if (e.kind == K::Lookup) {
@@ -394,8 +399,8 @@ bool App::handle_lookup(const InputEvent& e) {
             }
             return true;
         case K::Scroll: lookup_.scroll(e.pos.y); return true;
-        case K::Pointer:  // a press outside the popup closes it (and does nothing else)
-            if (!lookup_.contains(e.pos)) lookup_.close();
+        case K::Pointer:  // a tap on a word looks it up (Switch touch); elsewhere outside the popup closes it
+            if (!lookup_.contains(e.pos) && !lookup_at(e.pos)) lookup_.close();
             swallow_pointer_ = true;
             return true;
         case K::PointerMove:

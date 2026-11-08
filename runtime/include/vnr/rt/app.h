@@ -185,6 +185,7 @@ private:
     void start_script(std::size_t index);
     void handle(const InputEvent& e);
     void handle_log(const InputEvent& e);
+    bool lookup_at(Vec2 pos);                 // looks up the word at pos; false when no character is there
     bool handle_lookup(const InputEvent& e);  // true when the event was used by the dictionary popup
     bool ensure_dict();
     LookupTarget story_target() const { return {0, story_boxes_}; }

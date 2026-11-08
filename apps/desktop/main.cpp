@@ -12,6 +12,7 @@
 //            [--log] [--auto]   (smoke: open the LOG screen / turn AUTO on before the capture)
 //            [--lookup "text"]  (smoke: open the dictionary popup on "text" in the line before the capture)
 //            [--no-audio]       (no sound device; the mixer still runs, so voice waits keep their timing)
+//            [--fullscreen]     (fill the screen; PortMaster handhelds)
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -98,7 +99,7 @@ int main(int argc, char** argv) {
     std::string until;
     float wipe_at = -1, fx_at = -1;
     bool matched = false;
-    bool open_log = false, auto_on = false, no_audio = false, scripts_given = false;
+    bool open_log = false, auto_on = false, no_audio = false, scripts_given = false, fullscreen = false;
     std::string picker_shot;
     std::string lookup_word;  // --lookup
     std::string load_slot, save_screen;  // --load auto|quick|<1-30>, --savescreen save|load
@@ -116,6 +117,7 @@ int main(int argc, char** argv) {
         else if (a == "--log") open_log = true;
         else if (a == "--auto") auto_on = true;
         else if (a == "--no-audio") no_audio = true;
+        else if (a == "--fullscreen") fullscreen = true;
         else if (a == "--load" && i + 1 < argc) load_slot = argv[++i];
         else if (a == "--savescreen" && i + 1 < argc) save_screen = argv[++i];
         else if (a == "--lookup" && i + 1 < argc) lookup_word = argv[++i];
@@ -134,7 +136,8 @@ int main(int argc, char** argv) {
         return 1;
     }
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    const Uint32 win_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (hidden ? SDL_WINDOW_HIDDEN : 0);
+    const Uint32 win_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (hidden ? SDL_WINDOW_HIDDEN : 0) |
+                             (fullscreen && !hidden ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
     SDL_Window* window = SDL_CreateWindow("vnreader", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 576, win_flags);  // 16:9, as the game
     const Uint32 r_flags = hidden ? SDL_RENDERER_SOFTWARE : (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     SDL_Renderer* sdl_renderer = window ? SDL_CreateRenderer(window, -1, r_flags) : nullptr;
