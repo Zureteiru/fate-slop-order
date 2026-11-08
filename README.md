@@ -24,7 +24,7 @@ scripts. Point at a word (or press **Y**) and a dictionary popup explains it, so
 Japanese and look up what you don't know.
 
 - 📖 **Faithful playback:** the game's own scripts, with their fades, moves, waits, branches and choices
-- 🔎 **Instant dictionary:** JMdict with Yomitan's deconjugation (行ってしまいました → 行く), ranked by word frequency
+- 🔎 **Instant dictionary:** JMdict with Yomitan's deconjugation, ranked by word frequency
 - 🗂️ **Chapter picker:** every arc and chapter, read progress, Continue where you stopped
 - 💾 **Save anywhere:** an autosave, a quick save and 30 slots
 - 📜 **LOG screen, AUTO mode**, English and Japanese scripts
