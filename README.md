@@ -6,13 +6,13 @@
 
 **Read the Fate/Grand Order story on your Switch, PC or handheld, with Japanese lookups at the press of a button.**
 
-[![Release](https://img.shields.io/badge/release-v0.1.0-2b4f9e?style=flat-square)](https://github.com/Zureteiru/vnreader/releases/latest)
+[![Release](https://img.shields.io/badge/release-v0.1.0-2b4f9e?style=flat-square)](https://github.com/Zureteiru/fate-slop-order/releases/latest)
 [![Nintendo Switch](https://img.shields.io/badge/Nintendo%20Switch-homebrew-E60012?style=flat-square&logo=nintendoswitch&logoColor=white)](#nintendo-switch)
 [![Windows](https://img.shields.io/badge/Windows-10%2B-0078D4?style=flat-square&logo=windows&logoColor=white)](#windows)
 [![PortMaster](https://img.shields.io/badge/PortMaster-aarch64-f2c14e?style=flat-square)](#portmaster-handhelds-anbernic-rg28xx)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square)](LICENSE)
 
-[**⬇ Download**](https://github.com/Zureteiru/vnreader/releases/latest) · [Setup](#setup-the-files-you-supply) · [Controls](#controls) · [Build from source](#build-from-source) · [How it works](#how-it-works)
+[**⬇ Download**](https://github.com/Zureteiru/fate-slop-order/releases/latest) · [Setup](#setup-the-files-you-supply) · [Controls](#controls) · [Build from source](#build-from-source) · [How it works](#how-it-works)
 
 </div>
 
@@ -57,7 +57,7 @@ tools/         Build scripts and installers for the files you supply
 
 ## Download
 
-The [latest release](https://github.com/Zureteiru/vnreader/releases/latest) has:
+The [latest release](https://github.com/Zureteiru/fate-slop-order/releases/latest) has:
 
 | File | For |
 |---|---|
