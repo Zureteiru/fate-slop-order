@@ -1,5 +1,5 @@
 #!/bin/bash
-# PortMaster launcher for vnreader (FGO story reader).
+# PortMaster launcher for Fate/Slop Order (internally: vnreader), an FGO story reader.
 
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 

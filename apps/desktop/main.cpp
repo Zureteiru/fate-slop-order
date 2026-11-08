@@ -138,7 +138,7 @@ int main(int argc, char** argv) {
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     const Uint32 win_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (hidden ? SDL_WINDOW_HIDDEN : 0) |
                              (fullscreen && !hidden ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-    SDL_Window* window = SDL_CreateWindow("vnreader", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 576, win_flags);  // 16:9, as the game
+    SDL_Window* window = SDL_CreateWindow("Fate/Slop Order", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 576, win_flags);  // 16:9, as the game
     const Uint32 r_flags = hidden ? SDL_RENDERER_SOFTWARE : (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     SDL_Renderer* sdl_renderer = window ? SDL_CreateRenderer(window, -1, r_flags) : nullptr;
     if (!sdl_renderer) {

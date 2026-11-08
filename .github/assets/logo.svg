@@ -1,16 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2b4f9e"/>
-      <stop offset="1" stop-color="#132a5c"/>
+    <radialGradient id="bg" cx="50%" cy="45%" r="60%">
+      <stop offset="0" stop-color="#23468f"/>
+      <stop offset="1" stop-color="#0b1838"/>
+    </radialGradient>
+    <linearGradient id="q" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.45" stop-color="#bfe6ff"/>
+      <stop offset="0.75" stop-color="#d8b8ff"/>
+      <stop offset="1" stop-color="#ffd27a"/>
     </linearGradient>
   </defs>
   <circle cx="48" cy="48" r="46" fill="url(#bg)"/>
-  <!-- the text box with its name tab -->
-  <path d="M22 34 h20 l4 6 h28 a4 4 0 0 1 4 4 v22 a4 4 0 0 1 -4 4 h-52 a4 4 0 0 1 -4 -4 v-28 a4 4 0 0 1 4 -4 z" fill="#fff" opacity="0.96"/>
-  <rect x="25" y="49" width="34" height="4" rx="2" fill="#2b4f9e"/>
-  <rect x="25" y="58" width="22" height="4" rx="2" fill="#2b4f9e" opacity="0.55"/>
-  <!-- the dictionary lens -->
-  <circle cx="64" cy="27" r="10" fill="none" stroke="#f2c14e" stroke-width="5"/>
-  <path d="M57 34 L50 41" stroke="#f2c14e" stroke-width="6" stroke-linecap="round"/>
+  <!-- summoning circle -->
+  <g fill="none" stroke="#e8c26a" stroke-linecap="round">
+    <circle cx="48" cy="48" r="40.5" stroke-width="1.6"/>
+    <circle cx="48" cy="48" r="35" stroke-width="1"/>
+    <g stroke-width="1.1"><line x1="84.50" y1="48.00" x2="87.50" y2="48.00"/><line x1="83.95" y1="54.34" x2="85.42" y2="54.60"/><line x1="82.30" y1="60.48" x2="83.71" y2="61.00"/><line x1="79.61" y1="66.25" x2="82.21" y2="67.75"/><line x1="75.96" y1="71.46" x2="77.11" y2="72.43"/><line x1="71.46" y1="75.96" x2="72.43" y2="77.11"/><line x1="66.25" y1="79.61" x2="67.75" y2="82.21"/><line x1="60.48" y1="82.30" x2="61.00" y2="83.71"/><line x1="54.34" y1="83.95" x2="54.60" y2="85.42"/><line x1="48.00" y1="84.50" x2="48.00" y2="87.50"/><line x1="41.66" y1="83.95" x2="41.40" y2="85.42"/><line x1="35.52" y1="82.30" x2="35.00" y2="83.71"/><line x1="29.75" y1="79.61" x2="28.25" y2="82.21"/><line x1="24.54" y1="75.96" x2="23.57" y2="77.11"/><line x1="20.04" y1="71.46" x2="18.89" y2="72.43"/><line x1="16.39" y1="66.25" x2="13.79" y2="67.75"/><line x1="13.70" y1="60.48" x2="12.29" y2="61.00"/><line x1="12.05" y1="54.34" x2="10.58" y2="54.60"/><line x1="11.50" y1="48.00" x2="8.50" y2="48.00"/><line x1="12.05" y1="41.66" x2="10.58" y2="41.40"/><line x1="13.70" y1="35.52" x2="12.29" y2="35.00"/><line x1="16.39" y1="29.75" x2="13.79" y2="28.25"/><line x1="20.04" y1="24.54" x2="18.89" y2="23.57"/><line x1="24.54" y1="20.04" x2="23.57" y2="18.89"/><line x1="29.75" y1="16.39" x2="28.25" y2="13.79"/><line x1="35.52" y1="13.70" x2="35.00" y2="12.29"/><line x1="41.66" y1="12.05" x2="41.40" y2="10.58"/><line x1="48.00" y1="11.50" x2="48.00" y2="8.50"/><line x1="54.34" y1="12.05" x2="54.60" y2="10.58"/><line x1="60.48" y1="13.70" x2="61.00" y2="12.29"/><line x1="66.25" y1="16.39" x2="67.75" y2="13.79"/><line x1="71.46" y1="20.04" x2="72.43" y2="18.89"/><line x1="75.96" y1="24.54" x2="77.11" y2="23.57"/><line x1="79.61" y1="29.75" x2="82.21" y2="28.25"/><line x1="82.30" y1="35.52" x2="83.71" y2="35.00"/><line x1="83.95" y1="41.66" x2="85.42" y2="41.40"/></g>
+    <circle cx="48" cy="48" r="22" stroke-width="0.9" opacity="0.8"/>
+    <g stroke-width="0.8" opacity="0.6"><line x1="70.00" y1="48.00" x2="83.00" y2="48.00"/><line x1="63.56" y1="63.56" x2="72.75" y2="72.75"/><line x1="48.00" y1="70.00" x2="48.00" y2="83.00"/><line x1="32.44" y1="63.56" x2="23.25" y2="72.75"/><line x1="26.00" y1="48.00" x2="13.00" y2="48.00"/><line x1="32.44" y1="32.44" x2="23.25" y2="23.25"/><line x1="48.00" y1="26.00" x2="48.00" y2="13.00"/><line x1="63.56" y1="32.44" x2="72.75" y2="23.25"/></g>
+    <polygon points="74.33,56.31 76.13,58.91 74.33,61.51 72.53,58.91" fill="#e8c26a" stroke="none"/><polygon points="58.91,71.73 60.71,74.33 58.91,76.93 57.11,74.33" fill="#e8c26a" stroke="none"/><polygon points="37.09,71.73 38.89,74.33 37.09,76.93 35.29,74.33" fill="#e8c26a" stroke="none"/><polygon points="21.67,56.31 23.47,58.91 21.67,61.51 19.87,58.91" fill="#e8c26a" stroke="none"/><polygon points="21.67,34.49 23.47,37.09 21.67,39.69 19.87,37.09" fill="#e8c26a" stroke="none"/><polygon points="37.09,19.07 38.89,21.67 37.09,24.27 35.29,21.67" fill="#e8c26a" stroke="none"/><polygon points="58.91,19.07 60.71,21.67 58.91,24.27 57.11,21.67" fill="#e8c26a" stroke="none"/><polygon points="74.33,34.49 76.13,37.09 74.33,39.69 72.53,37.09" fill="#e8c26a" stroke="none"/>
+  </g>
+  <!-- the crystal -->
+  <g stroke="#ffffff" stroke-width="0.8" stroke-linejoin="round">
+    <polygon points="48,22 60,40 48,72 36,40" fill="url(#q)"/>
+    <polygon points="48,22 54,40 48,72 42,40" fill="#ffffff" opacity="0.35"/>
+    <polyline points="36,40 48,44 60,40" fill="none" opacity="0.9"/>
+  </g>
+  <circle cx="44" cy="31" r="1.6" fill="#fff"/>
 </svg>

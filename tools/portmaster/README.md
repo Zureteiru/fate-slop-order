@@ -1,6 +1,6 @@
-# vnreader for PortMaster
+# Fate/Slop Order for PortMaster
 
-FGO story reader. Built with `bash tools/build_portmaster.sh` (aarch64).
+FGO story reader (internally: vnreader). Built with `bash tools/build_portmaster.sh` (aarch64).
 
 Copy `vnreader.sh` and the `vnreader/` folder into your `ports` folder, then put the contents of your
 PC's `userdata/` folder (ui/, fonts/, sfx/, wipes/, dict.bin, cache/, progress.json, saves/) into

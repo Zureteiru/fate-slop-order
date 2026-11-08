@@ -10,5 +10,5 @@ find_library(VNR_Z_LIB z REQUIRED)
 target_include_directories(vnreader PRIVATE ${VNR_CURL_INCLUDE})
 target_link_libraries(vnreader PRIVATE ${VNR_CURL_LIB} ${VNR_Z_LIB})
 
-nx_generate_nacp(vnreader.nacp NAME "vnreader" AUTHOR "Zureteiru" VERSION "0.1.0")
+nx_generate_nacp(vnreader.nacp NAME "Fate/Slop Order" AUTHOR "Zureteiru" VERSION "0.1.0")
 nx_create_nro(vnreader NACP vnreader.nacp ICON ${CMAKE_CURRENT_SOURCE_DIR}/icon.jpg)

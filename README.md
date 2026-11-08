@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src=".github/assets/logo.svg" alt="vnreader logo" width="120" height="120">
+<img src=".github/assets/logo.svg" alt="Fate/Slop Order logo" width="120" height="120">
 
-# vnreader
+# Fate/Slop Order
 
 **Read the Fate/Grand Order story on your Switch, PC or handheld, with Japanese lookups at the press of a button.**
 
@@ -18,7 +18,7 @@
 
 ---
 
-vnreader plays the main story of Fate/Grand Order the way the game shows it: backgrounds, characters,
+Fate/Slop Order plays the main story of Fate/Grand Order the way the game shows it: backgrounds, characters,
 expressions, camera moves, wipes, effects, BGM, sound effects and voices, driven by the game's own story
 scripts. Point at a word (or press **Y**) and a dictionary popup explains it, so you can read the original
 Japanese and look up what you don't know.
@@ -35,10 +35,13 @@ Japanese and look up what you don't know.
 > repository owner. Read the code with that in mind.
 
 > [!NOTE]
-> vnreader contains **no game assets**. Story scripts, images and audio are downloaded from
+> Fate/Slop Order contains **no game assets**. Story scripts, images and audio are downloaded from
 > [Atlas Academy](https://atlasacademy.io)'s public game data while you read; the UI art, game font and
 > sounds are files you supply yourself (see [Setup](#setup-the-files-you-supply)). It is a fan project, not
 > affiliated with or endorsed by TYPE-MOON, Lasengle, Aniplex or Nintendo.
+
+Internally (binaries, folders, code) the project is called **vnreader**: `vnreader.nro`, `vnreader.exe`,
+`sdmc:/switch/vnreader/`.
 
 ```
 core/          Script engine: script → program → player → stage (pure C++17, no OS code)
@@ -65,7 +68,7 @@ PortMaster users build the package with one command, see [PortMaster](#portmaste
 
 ## Setup: the files you supply
 
-vnreader keeps everything it needs in one **user folder**:
+Fate/Slop Order keeps everything it needs in one **user folder**:
 
 | Platform | User folder |
 |---|---|

@@ -68,7 +68,7 @@ int main(int, char**) {
             return 1;
         }
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-        SDL_Window* window = SDL_CreateWindow("vnreader", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_FULLSCREEN);
+        SDL_Window* window = SDL_CreateWindow("Fate/Slop Order", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_FULLSCREEN);
         SDL_Renderer* sdl_renderer = window ? SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC) : nullptr;
         if (!sdl_renderer) {
             log.write(std::string("SDL window/renderer: ") + SDL_GetError());
